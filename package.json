@@ -1,0 +1,9 @@
+{
+  "name": "cidade-bus-jam",
+  "version": "6.0.0",
+  "private": true,
+  "description": "Quebra-cabeça de ônibus: libere a rua e construa sua cidade.",
+  "scripts": {
+    "test": "node tests/fases.test.js"
+  }
+}

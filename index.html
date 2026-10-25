@@ -149,6 +149,24 @@ img,canvas{image-rendering:crisp-edges;image-rendering:pixelated}
 #setOv{z-index:72}
 .sky{display:flex;justify-content:center;flex-wrap:wrap;gap:4px;margin-top:10px}
 .sky img{width:36px;height:36px;background:#58b368;border:2px solid var(--line);animation:pop .4s backwards}
+/* rodoviária */
+#rodStop{display:flex;align-items:center;gap:8px;justify-content:center;background:#4b5168;border:4px solid var(--line);padding:8px;margin-bottom:8px;min-height:64px}
+#rodStop .cur{position:relative;transition:transform .45s ease-in}
+#rodStop .cur.go{transform:translateX(140%)}
+#rodStop .seats{display:flex;gap:3px;justify-content:center;margin-top:4px}
+#rodStop .seats i{width:10px;height:10px;border:2px solid var(--line);background:#101c42}
+#rodStop .seats i.on{background:#7cff6b}
+#rodStop .nx{opacity:.7;text-align:center;font-size:7px}
+#rodBench{display:flex;gap:4px;justify-content:center;margin-bottom:10px}
+#rodBench div{width:34px;height:42px;background:#101c42;border:3px solid var(--line);display:flex;align-items:center;justify-content:center}
+#rodBench div.extra{border-color:#ffd23f}
+#rodBench img{height:32px}
+#rodGrid{position:relative;margin:0 auto;background:#d9c08a;border:4px solid var(--line);box-shadow:0 6px 0 var(--line)}
+#rodGrid .ps{position:absolute;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:transform .25s,opacity .25s}
+#rodGrid .ps img{height:86%}
+#rodGrid .ps.far{opacity:.45}
+#rodGrid .wall{position:absolute;background:#5a6179;border:2px solid var(--line)}
+#rodGrid .ps.bad{animation:bad .4s}
 #setBody .btn{margin-top:8px}
 </style>
 </head>
@@ -171,6 +189,7 @@ img,canvas{image-rendering:crisp-edges;image-rendering:pixelated}
     <div class="pws">
       <button class="btn sec pw" id="pwMagnet"></button>
       <button class="btn sec pw" id="pwHeart"></button>
+      <button class="btn sec pw" id="pwWhistle"></button>
     </div>
     <div class="row">
       <button class="btn" id="hintBtn">Dica (AD)</button>
@@ -179,7 +198,16 @@ img,canvas{image-rendering:crisp-edges;image-rendering:pixelated}
       <button class="btn sec" id="cfgBtn">Config</button>
       <button class="btn" id="backBtn" style="display:none">Campanha</button>
     </div>
+    <div class="row"><button class="btn sec wide" id="rodBtn" style="display:none"></button></div>
     <p class="help" id="help">Toque nos ônibus para tirá-los da rua. Se bater em algo, você perde um coração!</p>
+  </div>
+  <div id="rodView" class="hidden">
+    <div class="top"><div class="pill" id="rodLvl"></div><div class="pill" id="rodBuses"></div><div class="pill"><img id="rodCoinImg" alt=""><span id="rodCoins">0</span></div></div>
+    <div id="rodStop"></div>
+    <div id="rodBench"></div>
+    <div id="rodGrid"></div>
+    <div class="row"><button class="btn sec" id="rodSeat"></button><button class="btn sec" id="rodReset">Reiniciar</button><button class="btn" id="rodBack">Campanha</button></div>
+    <p class="help">Toque em quem pode sair (sem ninguém na frente até a rua de cima). Da cor do ônibus, embarca; de outra cor, espera no banco. Banco lotado = derrota!</p>
   </div>
   <div id="rewView" class="hidden"></div>
   <div id="colView" class="hidden"></div>
@@ -202,6 +230,8 @@ img,canvas{image-rendering:crisp-edges;image-rendering:pixelated}
 <div id="banner"><span id="bannerTxt"></span></div>
 <div class="overlay" id="chOv"><div class="box"><h2 id="chT"></h2><img id="chImg" alt=""><div id="chItems"></div><button class="btn" id="chBtn">Coletar</button></div></div>
 
+<script src="logica.js"></script>
+<script src="i18n.js"></script>
 <script>
 const $=id=>document.getElementById(id);
 const C=(w,h)=>{const c=document.createElement('canvas');c.width=w;c.height=h;return c};
@@ -231,9 +261,12 @@ const IMG={
   magnet:patt(["..XXXX..",".XXXXXX.","XX....XX","XX....XX","RR....BB","RR....BB","RR....BB","WW....WW"],{X:'#aab3c7',R:'#e63946',B:'#2f6fe0',W:'#ffffff'}),
   chest:patt(["..XXXXXXXX..",".XBBBBBBBBX.","XBBBBBBBBBBX","XGGGGGGGGGGX","XBBBBYYBBBBX","XBBBBYYBBBBX","XBBBBBBBBBBX","XXXXXXXXXXXX"],{X:'#4a2a0c',B:'#a56a2a',G:'#ffd23f',Y:'#fff3a0'}),
   cloud:(()=>{const c=C(24,10),g=c.getContext('2d');R(g,4,4,16,5,'#fff');R(g,2,6,20,3,'#fff');R(g,7,2,6,3,'#fff');R(g,13,1,5,4,'#fff');R(g,2,8,20,1,'#d6ecff');R(g,4,9,16,1,'#d6ecff');return c.toDataURL()})(),
+  gateC:(()=>{const c=C(16,16),g=c.getContext('2d');R(g,1,4,2,11,'#6b7280');R(g,13,4,2,11,'#6b7280');for(let x=0;x<16;x+=4){R(g,x,7,2,3,'#e63946');R(g,x+2,7,2,3,'#fff')}R(g,1,3,2,1,'#ffd23f');R(g,13,3,2,1,'#ffd23f');return c.toDataURL()})(),
+  gateO:(()=>{const c=C(16,16),g=c.getContext('2d');R(g,1,4,2,11,'#6b7280');R(g,13,4,2,11,'#6b7280');for(let y=0;y<10;y+=3){R(g,1,y,2,2,'#e63946');R(g,1,y+2,2,1,'#fff')}R(g,13,3,2,1,'#7cff6b');return c.toDataURL()})(),
+  whistle:patt(["......XX",".XXXXXWX","XYYYYYXX","XYWYYYX.","XYYYYYX.",".XYYYX..","..XXX..."],{X:'#1b2a55',Y:'#ffd23f',W:'#fff8c4'}),
   cone:(()=>{const c=C(16,16),g=c.getContext('2d');R(g,3,13,10,2,'#5a2a0a');R(g,7,2,2,2,'#ff8a1f');R(g,6,4,4,3,'#ff8a1f');R(g,5,7,6,3,'#ff8a1f');R(g,4,10,8,3,'#ff8a1f');R(g,6,5,4,1,'#fff');R(g,5,8,6,1,'#fff');R(g,7,3,1,1,'#ffc27a');return c.toDataURL()})()
 };
-const ICON={coins:IMG.coin,magnet:IMG.magnet,heart:IMG.heart,chest:IMG.chest};
+const ICON={coins:IMG.coin,magnet:IMG.magnet,heart:IMG.heart,chest:IMG.chest,whistle:IMG.whistle};
 
 const SPR={};
 function decoSkin(g,W,skin,cx){
@@ -245,6 +278,11 @@ function decoSkin(g,W,skin,cx){
   else if(skin==='candango'){r(2,11,W-4,1,'#8b5a2b');r(W/2-1,2,2,1,'#2e7d32');r(3,6,1,3,'#fff')}
   else if(skin==='cataratas'){for(let i=0;i<5;i++)r(3+i*Math.floor((W-8)/5),12,2,1,'#fff');r(2,3,W-4,1,'#e1f5fe')}
   else if(skin==='ouro'){r(2,3,W-4,1,'#fff3a0');r(2,12,W-4,1,'#b8860b');r(1,7,1,2,'#fff3a0');r(W-2,7,1,2,'#fff3a0')}
+  else if(skin==='carnaval'){const cs=['#ffd23f','#7cff6b','#ff4fd8','#4de3ff'];for(let i=0;i<10;i++)r(4+((i*5)%(W-10)),4+((i*7)%7),1,1,cs[i%4]);r(2,12,W-4,1,'#ffd23f')}
+  else if(skin==='junina'){const cs=['#e63946','#ffd23f','#2a9d8f','#4db8ff'];for(let x=2,i=0;x<W-3;x+=3,i++){r(x,2,3,1,cs[i%4]);r(x+1,3,1,1,cs[i%4])}r(2,12,W-4,1,'#8b5a2b')}
+  else if(skin==='natal'){for(let i=0;i<8;i++)r(4+((i*6)%(W-9)),4+((i*5)%7),1,1,'#ffffff');r(2,12,W-4,1,'#2e9e4f');r(2,3,W-4,1,'#ffffff')}
+  else if(skin==='saci'){r(5,4,3,2,'#e63946');r(6,3,1,1,'#e63946');r(2,12,W-4,1,'#1a1a1a');for(let x=4;x<W-4;x+=6)r(x,11,2,1,'#ff8a1f')}
+  else if(skin==='pascoa'){const cs=['#ffd1e8','#b6f0e6','#fff3a0','#d9c2ff'];for(let i=0;i<6;i++){const x=5+((i*8)%(W-10)),y=4+((i*3)%6);r(x,y,2,3,cs[i%4])}}
   else if(skin==='doce'){
     const cs=['#ffffff','#6ec6ff','#ffd23f','#7cff6b'];
     for(let i=0;i<8;i++){const x=5+((i*7)%(W-14)),y=4+((i*3)%7);if(x>=cx-4&&x<=cx+4&&y>=5&&y<=10)continue;r(x,y,1,1,cs[i%4])}
@@ -272,6 +310,12 @@ function bus(len,d,h,color,kind,tag,skin){
   }
   else if(kind==='broken'){R(g,W-12,5,4,6,'#3a3f52');R(g,W-11,6,1,1,'#ffb300');R(g,W-10,9,1,1,'#ffb300');R(g,6,5,1,5,'#e63946');R(g,4,7,5,1,'#e63946')}
   else if(kind==='flip'){R(g,5,6,4,4,'#4de3ff');R(g,6,7,2,2,'#14305c')}
+  else if(kind==='ice'){
+    for(let i=0;i<W;i+=5){R(g,2+i,3,2,1,'#ffffff');R(g,4+i,12,1,1,'#ffffff')}
+    R(g,4,5,5,5,'#2a6fb0');
+    const DG={1:['010','110','010','010','111'],2:['111','001','111','100','111'],3:['111','001','111','001','111']}[+tag.slice(1)]||['111','101','101','101','111'];
+    DG.forEach((row,yy)=>[...row].forEach((ch,xx)=>{if(ch==='1')R(g,5+xx,5+yy,1,1,'#fff')}));
+  }
   if(skin&&!kind)decoSkin(g,W,skin,cx);
   const ac_=kind==='vip'?'#2f2f46':kind==='school'?'#222':'#fff';
   R(g,cx-3,7,4,2,ac_);R(g,cx+1,5,1,6,ac_);R(g,cx+2,6,1,4,ac_);R(g,cx+3,7,1,2,ac_);
@@ -299,7 +343,13 @@ const REG=[
  {n:'Manaus',sky:['#5fd68a','#a6ecc0','#dcf9e8'],road:['#3d5a45','#385340','#2d4635','#4f7058'],root:246.94,sc:'lyd',wave:'sine'},
  {n:'Gramado',sky:['#8fb8ff','#cfe0ff','#f2f6ff'],road:['#aebbd2','#a6b4cc','#8c9ab4','#cdd8ea'],root:392,sc:'pent',wave:'sine'},
  {n:'Brasília',sky:['#ff8a5c','#ffc08a','#ffe9c9'],road:['#6b6f7a','#656974','#555964','#7c808c'],root:277.18,sc:'lyd',wave:'square'},
- {n:'Foz do Iguaçu',sky:['#3fd0c9','#9fe8e1','#e0fbf8'],road:['#4a6a63','#44625b','#37524b','#5b7d75'],root:311.13,sc:'maj',wave:'sine'}
+ {n:'Foz do Iguaçu',sky:['#3fd0c9','#9fe8e1','#e0fbf8'],road:['#4a6a63','#44625b','#37524b','#5b7d75'],root:311.13,sc:'maj',wave:'sine'},
+ /* Passaporte do Mundo */
+ {n:'Buenos Aires',w:1,sky:['#74b9ff','#b8dcff','#eef6ff'],road:['#5d5f6b','#575965','#474954','#6e707d'],root:220,sc:'minp',wave:'triangle'},
+ {n:'Lisboa',w:1,sky:['#ffb347','#ffd9a0','#fff3df'],road:['#8a7f72','#83786b','#6c6256','#9e9385'],root:349.23,sc:'maj',wave:'triangle'},
+ {n:'Paris',w:1,sky:['#a29bfe','#d3cfff','#f3f1ff'],road:['#6f6a7a','#696474','#585363','#827d8e'],root:261.63,sc:'lyd',wave:'sine'},
+ {n:'Nova York',w:1,sky:['#55c2ff','#a8e0ff','#e6f6ff'],road:['#3f4350','#3a3e4a','#2f323d','#51566a'],root:293.66,sc:'pent',wave:'square'},
+ {n:'Tóquio',w:1,sky:['#ff9ec7','#ffd0e4','#fff0f7'],road:['#5a5560','#544f5a','#45404b','#6b6672'],root:329.63,sc:'pent',wave:'sine'}
 ];
 const regionOf=lv=>Math.min(REG.length-1,Math.floor((lv-1)/25));
 function boardBG(n,r){
@@ -324,7 +374,12 @@ const SKINS=[
  {id:'doce',n:'Doce',r:'e',pal:['#ff9ecb','#b6f0e6','#ffe08a']},
  {id:'candango',n:'Candango',r:'r',pal:['#e8d9a8','#b08d57']},
  {id:'cataratas',n:'Cataratas',r:'r',pal:['#4fc3f7','#e1f5fe']},
- {id:'ouro',n:'Ouro',r:'e',ev:1,pal:['#ffd700','#e0a91c']}
+ {id:'ouro',n:'Ouro',r:'e',ev:1,pal:['#ffd700','#e0a91c']},
+ {id:'carnaval',n:'Carnaval',r:'e',ev:1,pal:['#7b2cbf','#c1121f']},
+ {id:'junina',n:'Arraiá',r:'e',ev:1,pal:['#f4a261','#e9c46a']},
+ {id:'natal',n:'Natal',r:'e',ev:1,pal:['#c1121f','#1f7a3a']},
+ {id:'saci',n:'Saci',r:'e',ev:1,pal:['#3a2a1a','#5a3d2b']},
+ {id:'pascoa',n:'Páscoa',r:'e',ev:1,pal:['#8e6cef','#f28482']}
 ];
 const SK=Object.fromEntries(SKINS.map(s=>[s.id,s]));
 const skinPrev=id=>bus(2,1,true,(SK[id].pal||['#e63946'])[0],'','',id==='base'?'':id);
@@ -338,9 +393,14 @@ const BUILDINGS=[
  {n:'Teatro Amazonas',c:1200},{n:'Árvore da Amazônia',c:1500},
  {n:'Chalé Alpino',c:1800},{n:'Árvore de Natal',c:2200},
  {n:'Catedral de Brasília',c:2600},{n:'Congresso Nacional',c:3000},
- {n:'Cataratas do Iguaçu',c:3500},{n:'Usina de Itaipu',c:4000}
+ {n:'Cataratas do Iguaçu',c:3500},{n:'Usina de Itaipu',c:4000},
+ {n:'Obelisco',c:4500},{n:'Caminito',c:5000},
+ {n:'Torre de Belém',c:5600},{n:'Elétrico 28',c:6200},
+ {n:'Torre Eiffel',c:7000},{n:'Arco do Triunfo',c:7800},
+ {n:'Estátua da Liberdade',c:8600},{n:'Ponte do Brooklyn',c:9500},
+ {n:'Monte Fuji',c:10500},{n:'Portal Torii',c:11500}
 ];
-const INC=[2,1,2,4,6,8,10,15,20,30,12,18,22,28,34,42,50,60,75,90,100,115,130,150];
+const INC=[2,1,2,4,6,8,10,15,20,30,12,18,22,28,34,42,50,60,75,90,100,115,130,150,165,180,200,220,240,260,285,310,340,370];
 const DRAW=[
  g=>{const r=(...a)=>R(g,...a);r(10,1,2,4,'#7b4b3a');r(5,2,6,1,'#d64541');r(4,3,8,1,'#d64541');r(3,4,10,1,'#d64541');r(2,5,12,1,'#d64541');r(2,6,12,1,'#9c2f2b');r(3,7,10,7,'#f3e2b3');r(3,13,10,1,'#d8c28a');r(7,9,3,5,'#7a4a21');r(9,11,1,1,'#ffd23f');r(4,9,2,2,'#6ec6ff');r(11,9,2,2,'#6ec6ff')},
  g=>{const r=(...a)=>R(g,...a);r(7,10,2,5,'#7a4a21');r(5,2,6,1,'#2e9e4f');r(4,3,8,7,'#2e9e4f');r(3,5,10,4,'#2e9e4f');r(4,9,8,1,'#1f7a3a');r(3,8,10,1,'#1f7a3a');r(5,4,2,2,'#5bd17a');r(9,6,2,1,'#5bd17a')},
@@ -371,7 +431,19 @@ const LM2=[
   g=>{const r=(...a)=>R(g,...a);r(0,0,16,3,'#6fcf97');r(0,3,3,9,'#3f8f4a');r(13,3,3,9,'#3f8f4a');r(3,3,10,9,'#bfe9ff');r(4,3,2,9,'#ffffff');r(8,3,3,9,'#ffffff');r(6,4,1,8,'#8fd3ff');r(0,12,16,4,'#4fb0f0');r(2,12,3,1,'#fff');r(7,13,4,1,'#fff');r(12,12,2,1,'#fff');r(1,0,3,2,'#2e9e4f');r(11,0,4,2,'#2e9e4f')},
   g=>{const r=(...a)=>R(g,...a);r(0,3,16,1,'#6fcf97');r(0,4,16,1,'#c7cedb');r(1,5,14,5,'#9aa3b5');r(1,5,14,1,'#c7cedb');r(3,6,1,4,'#6a7388');r(6,6,1,4,'#6a7388');r(9,6,1,4,'#6a7388');r(12,6,1,4,'#6a7388');r(0,10,16,1,'#6a7388');r(1,11,14,5,'#4fb0f0');r(3,12,3,1,'#bfe9ff');r(9,13,4,1,'#bfe9ff')}
 ];
-DRAW.push(...LM,...LM2);
+const LM3=[
+  g=>{const r=(...a)=>R(g,...a);r(4,13,8,2,'#9aa3b5');r(6,3,4,10,'#f4f4f4');r(9,3,1,10,'#d4d8e0');r(7,1,2,2,'#f4f4f4');r(7,0,1,1,'#c7cedb');r(7,6,2,1,'#1b3a6b')},
+  g=>{const r=(...a)=>R(g,...a);r(0,6,6,9,'#e63946');r(6,3,5,12,'#4db8ff');r(11,7,5,8,'#ffd23f');r(0,5,6,1,'#9c2f2b');r(6,2,5,1,'#2f6fe0');r(11,6,5,1,'#c9971a');r(2,8,2,2,'#fff3a0');r(8,5,2,2,'#fff');r(8,10,2,5,'#7a4a21');r(12,9,2,2,'#2e9e4f');r(2,12,2,3,'#7a4a21')},
+  g=>{const r=(...a)=>R(g,...a);r(0,13,16,3,'#4fb0f0');r(4,4,8,10,'#e9dcb8');r(4,3,1,1,'#e9dcb8');r(6,3,1,1,'#e9dcb8');r(9,3,1,1,'#e9dcb8');r(11,3,1,1,'#e9dcb8');r(6,1,4,3,'#ded0a8');r(7,0,2,1,'#ded0a8');r(7,6,2,3,'#7a6a4a');r(5,10,6,1,'#c9b98f');r(2,14,3,1,'#bfe9ff')},
+  g=>{const r=(...a)=>R(g,...a);r(7,0,1,4,'#333');r(1,4,14,8,'#ffd23f');r(1,11,14,1,'#c9971a');r(2,5,3,3,'#6ec6ff');r(6,5,3,3,'#6ec6ff');r(10,5,4,3,'#6ec6ff');r(1,9,14,1,'#ffffff');r(2,12,3,2,'#333');r(11,12,3,2,'#333');r(0,14,16,1,'#8e98ad')},
+  g=>{const r=(...a)=>R(g,...a);r(7,0,2,2,'#8a5a3a');r(7,2,2,3,'#a0693f');r(6,5,4,1,'#8a5a3a');r(6,6,4,3,'#a0693f');r(5,9,6,1,'#8a5a3a');r(4,10,2,5,'#a0693f');r(10,10,2,5,'#a0693f');r(3,15,3,1,'#8a5a3a');r(10,15,3,1,'#8a5a3a');r(6,11,4,1,'#8a5a3a');r(7,7,2,1,'#6b4423')},
+  g=>{const r=(...a)=>R(g,...a);r(2,3,12,12,'#e8d9b0');r(1,2,14,2,'#d4c495');r(6,8,4,7,'#7aa6d6');r(6,7,4,1,'#d4c495');r(7,6,2,1,'#d4c495');r(3,5,2,2,'#c9b98f');r(11,5,2,2,'#c9b98f');r(3,10,2,1,'#c9b98f');r(11,10,2,1,'#c9b98f')},
+  g=>{const r=(...a)=>R(g,...a);r(4,13,8,3,'#9aa3b5');r(6,5,4,8,'#5fbf9f');r(5,8,1,5,'#4aa587');r(7,3,2,2,'#5fbf9f');r(6,2,4,1,'#5fbf9f');r(11,1,1,6,'#5fbf9f');r(10,0,3,1,'#ffd23f');r(11,0,1,1,'#ff8a1f');r(10,5,1,2,'#5fbf9f');r(7,9,2,1,'#4aa587')},
+  g=>{const r=(...a)=>R(g,...a);r(0,11,16,1,'#8e6c4a');r(0,12,16,4,'#4fb0f0');r(3,2,2,10,'#a0693f');r(11,2,2,10,'#a0693f');r(3,4,2,2,'#6b4423');r(11,4,2,2,'#6b4423');for(let i=0;i<4;i++){r(5+i,3+i,1,1,'#c7cedb');r(10-i,3+i,1,1,'#c7cedb');r(i,7+i,1,1,'#c7cedb');r(15-i,7+i,1,1,'#c7cedb')}r(2,13,3,1,'#bfe9ff')},
+  g=>{const r=(...a)=>R(g,...a);r(0,14,16,2,'#6fcf97');r(1,13,14,1,'#5b6fae');r(2,11,12,2,'#5b6fae');r(4,8,8,3,'#5b6fae');r(6,6,4,2,'#ffffff');r(5,8,2,1,'#ffffff');r(9,8,2,1,'#ffffff');r(7,5,2,1,'#ffffff');r(3,12,2,1,'#4a5d96')},
+  g=>{const r=(...a)=>R(g,...a);r(0,2,16,2,'#d62828');r(1,1,14,1,'#1a1a1a');r(2,5,12,1,'#d62828');r(3,4,2,11,'#d62828');r(11,4,2,11,'#d62828');r(7,4,2,2,'#d62828');r(3,14,2,1,'#1a1a1a');r(11,14,2,1,'#1a1a1a')}
+];
+DRAW.push(...LM,...LM2,...LM3);
 const BCAN=DRAW.map(f=>{const c=C(16,16);f(c.getContext('2d'));return c});
 const BIMG=BCAN.map(c=>c.toDataURL());
 
@@ -381,24 +453,28 @@ const todayStr=()=>{const d=new Date();return d.getFullYear()+'-'+pad(d.getMonth
 const fmt=ms=>{ms=Math.max(0,Math.ceil(ms/1000));return [Math.floor(ms/3600),Math.floor(ms%3600/60),ms%60].map(pad).join(':')};
 function hashStr(s){let h=1779033703^s.length;for(let i=0;i<s.length;i++){h=Math.imul(h^s.charCodeAt(i),3432918353);h=h<<13|h>>>19}return h>>>0}
 function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
-const DEF=()=>({level:1,coins:0,city:[],inv:{magnet:2,heart:1},chestProg:0,freeAt:0,login:{last:'',streak:0,claimed:''},missions:{date:'',list:[],bonus:false},ms:0,cityAt:0,best:0,
+const DEF=()=>({level:1,coins:0,city:[],inv:{magnet:2,heart:1,whistle:1},chestProg:0,freeAt:0,login:{last:'',streak:0,claimed:''},missions:{date:'',list:[],bonus:false},ms:0,cityAt:0,best:0,
   skins:['base'],skin:'base',regionSeen:0,set:{vib:true,cb:false},tutLeft:3,seen:{},fails:{},gift:{},ev:[],
   daily:{date:'',done:false,attempts:0,errs:0,stars:0,log:'',streak:0,lastDone:'',best:0},
   weekly:{key:'',contrib:0,cl:[0,0,0,0]},
-  evp:{},evc:{},pass:{key:'',xp:0,fr:[],pr:[],prem:false},buy:{},noAds:false});
+  evp:{},evc:{},pass:{key:'',xp:0,fr:[],pr:[],prem:false},buy:{},noAds:false,
+  adc:{},prices:{},tok:[],ws:0,rod:{level:1},wsLost:0,race:null,fest:{},adday:{date:'',chest:0,city:0},lang:''});
 let S=DEF();
 try{
   const t=JSON.parse(localStorage.getItem('cbj')||'null');
   if(t&&typeof t.level==='number'){
     S=Object.assign(S,t);
-    S.inv=Object.assign({magnet:2,heart:1},t.inv||{});
+    S.inv=Object.assign({magnet:2,heart:1,whistle:1},t.inv||{});
     S.login=Object.assign(DEF().login,t.login||{});
     S.missions=Object.assign(DEF().missions,t.missions||{});
     S.daily=Object.assign(DEF().daily,t.daily||{});
     S.weekly=Object.assign(DEF().weekly,t.weekly||{});
     S.set=Object.assign(DEF().set,t.set||{});
     if(t.tutLeft===undefined)S.tutLeft=t.level>3?0:3;
-    ['seen','fails','gift'].forEach(k=>{if(!S[k]||typeof S[k]!=='object')S[k]={}});
+    ['seen','fails','gift','adc','prices','fest','buy'].forEach(k=>{if(!S[k]||typeof S[k]!=='object')S[k]={}});
+    if(!Array.isArray(S.tok))S.tok=[];
+    S.rod=Object.assign({level:1},t.rod||{});
+    S.adday=Object.assign(DEF().adday,t.adday||{});
     if(!Array.isArray(S.ev))S.ev=[];
     if(!Array.isArray(S.skins)||!S.skins.includes('base'))S.skins=['base'].concat(Array.isArray(S.skins)?S.skins:[]);
     S.skins=S.skins.filter(x=>SK[x]);if(!SK[S.skin]||!S.skins.includes(S.skin))S.skin='base';
@@ -509,7 +585,7 @@ function centerOf(el){const r=el.getBoundingClientRect();return [r.left+r.width/
 
 /* ---------- recompensas ---------- */
 const TIERN={free:'grátis',level:'da fase',mission:'de missão',rare:'raro',epic:'épico'};
-const rewardLabel=r=>r.t==='coins'?'+'+r.v+' moedas':r.t==='magnet'?'Ímã x'+r.v:r.t==='heart'?'Coração x'+r.v:r.t==='skin'?'Skin '+SK[r.v].n:'Baú '+TIERN[r.v];
+const rewardLabel=r=>r.t==='coins'?'+'+r.v+' moedas':r.t==='magnet'?'Ímã x'+r.v:r.t==='heart'?'Coração x'+r.v:r.t==='whistle'?'Apito x'+r.v:r.t==='skin'?'Skin '+SK[r.v].n:'Baú '+TIERN[r.v];
 const RAR={c:{n:'COMUM',col:'#cfd8ff'},r:{n:'RARO!',col:'#6ec6ff'},e:{n:'ÉPICO!!',col:'#c77dff'}};
 function rollSkin(rars){
   const pool=SKINS.filter(s=>s.id!=='base'&&!s.ev&&rars.includes(s.r)&&!S.skins.includes(s.id));
@@ -520,8 +596,8 @@ function rollChest(tier){
   const x=Math.random();let rar;
   if(tier==='epic')rar='e';else rar=x<W[0]?'c':x<W[0]+W[1]?'r':'e';
   const items=[];
-  if(rar==='c'){items.push({t:'coins',v:ri(15,40)});if(Math.random()<.3)items.push({t:pick(['magnet','heart']),v:1});if(Math.random()<.05)items.push(rollSkin(['c']))}
-  if(rar==='r'){items.push({t:'coins',v:ri(40,90)});items.push({t:pick(['magnet','heart']),v:1});if(Math.random()<.3)items.push(rollSkin(['c','r']))}
+  if(rar==='c'){items.push({t:'coins',v:ri(15,40)});if(Math.random()<.3)items.push({t:pick(['magnet','heart','whistle']),v:1});if(Math.random()<.05)items.push(rollSkin(['c']))}
+  if(rar==='r'){items.push({t:'coins',v:ri(40,90)});items.push({t:pick(['magnet','heart','whistle']),v:1});if(Math.random()<.3)items.push(rollSkin(['c','r']))}
   if(rar==='e'){items.push({t:'coins',v:ri(120,250)});items.push({t:'magnet',v:1});items.push({t:'heart',v:1});items.push(rollSkin(['r','e']))}
   return {rar,items};
 }
@@ -578,6 +654,14 @@ function showDaily(){
 /* baú grátis */
 const freeReady=()=>Date.now()>=S.freeAt;
 function openFree(){if(!freeReady())return;S.freeAt=Date.now()+3*3600e3;save();openChest('free',()=>renderRew())}
+/* anúncios premiados com limite por dia */
+function adDay(){if(S.adday.date!==todayStr())S.adday={date:todayStr(),chest:0,city:0};return S.adday}
+function openFreeAd(){if(freeReady()||adDay().chest>=2)return;Plat.rewarded('chest',ok=>{if(!ok)return;adDay().chest++;S.freeAt=0;save();openFree()})}
+const ITEMN={magnet:'1 Ímã',heart:'1 Coração',whistle:'1 Apito'};
+function adOffer(item){
+  SFX.tick();
+  popup({title:'Sem moedas',msg:'Assista a um anúncio e ganhe '+ITEMN[item]+'.',btn:'Assistir (AD)',fn:()=>Plat.rewarded('item_'+item,ok=>{if(!ok)return;S.inv[item]++;save();hud();SFX.buy();const [x,y]=centerOf($('boardWrap'));floatText(x,y,'+'+ITEMN[item],'#7cff6b')}),btn2:'Agora não',fn2:()=>{$('ov').style.display='none'}});
+}
 
 /* missões */
 const MLAB={clear:t=>'Tire '+t+' ônibus da rua',levels:t=>'Conclua '+t+' fases',combo:t=>'Faça um combo x'+t,perfect:()=>'Vença uma fase sem perder coração'};
@@ -609,7 +693,8 @@ function cityPending(){
   if(!S.city.length||!S.cityAt)return 0;
   return Math.floor(rate()*Math.min((Date.now()-S.cityAt)/3600e3,6));
 }
-function collectCity(){
+function collectCity(dbl){
+  if(dbl){if(adDay().city>=3)return;Plat.rewarded('city',ok=>{if(!ok)return;adDay().city++;S.coins+=cityPending();collectCity()});return}
   const v=cityPending();if(v<1)return;
   S.coins+=v;S.cityAt=Date.now();save();tweenCoins();SFX.coin(4);vib(20);
   const [x,y]=centerOf($('cityWrap'));
@@ -623,107 +708,10 @@ function claimMs(){
   giveReward(m.r,()=>renderCity());
 }
 
-/* ---------- lógica do puzzle ---------- */
-const COLORS=['#e63946','#2a9d8f','#f4a261','#8e6cef','#06a6d4','#e76f9a','#7cb518','#9aa7ff'];
-function cellsOf(p){const a=[];for(let i=0;i<p.len;i++)a.push(p.h?[p.x+i,p.y]:[p.x,p.y+i]);return a}
-function pathDir(p,d){
-  const a=[];
-  if(p.h){if(d>0)for(let x=p.x+p.len;x<N;x++)a.push([x,p.y]);else for(let x=0;x<p.x;x++)a.push([x,p.y])}
-  else{if(d>0)for(let y=p.y+p.len;y<N;y++)a.push([p.x,y]);else for(let y=0;y<p.y;y++)a.push([p.x,y])}
-  return a;
-}
-const pathCells=p=>pathDir(p,p.d);
-function canMove(p,list){
-  const occ=new Set();
-  list.forEach(q=>{if(q!==p)cellsOf(q).forEach(c=>occ.add(c[0]+','+c[1]))});
-  const ok=d=>pathDir(p,d).every(c=>!occ.has(c[0]+','+c[1]));
-  return p.kind==='flip'?(ok(1)||ok(-1)):ok(p.d);
-}
-function freeList(rest,fx){
-  const all=rest.concat(fx);
-  return rest.filter(p=>{
-    if(!canMove(p,all))return false;
-    if(!p.grp)return true;
-    const m=rest.find(q=>q.grp===p.grp&&q!==p);
-    return !m||canMove(m,all);
-  });
-}
-function rounds(list){
-  let rest=list.filter(p=>!p.fixed);const fx=list.filter(p=>p.fixed);let r=0;
-  while(rest.length){
-    const fl=freeList(rest,fx);
-    if(!fl.length)return Infinity;
-    rest=rest.filter(p=>!fl.includes(p));r++;
-  }
-  return r;
-}
-const solvable=list=>rounds(list)!==Infinity;
-function fallbackLevel(){
-  return [
-    {x:0,y:0,len:2,h:true,d:1,color:COLORS[0],ci:0},
-    {x:3,y:0,len:2,h:false,d:1,color:COLORS[1],ci:1},
-    {x:0,y:2,len:2,h:true,d:1,color:COLORS[2],ci:2},
-    {x:1,y:3,len:2,h:false,d:1,color:COLORS[3],ci:3}
-  ];
-}
-function addSpecials(list,level,rnd){
-  const mv=list.filter(p=>!p.fixed);
-  const pv=level>=4?.12:0,pb=level>=8?.12:0,pf=level>=16?.10:0;
-  mv.forEach(p=>{const x=rnd();if(x<pv)p.kind='vip';else if(x<pv+pb)p.kind='broken';else if(x<pv+pb+pf)p.kind='flip'});
-  const pairs=level>=30?2:level>=12?1:0;
-  const pool=mv.filter(p=>!p.kind);
-  for(let g=0;g<pairs;g++){
-    for(let a=0;a<60;a++){
-      const x=pool[(rnd()*pool.length)|0],y=pool[(rnd()*pool.length)|0];
-      if(!x||!y||x===y||x.kind||y.kind)continue;
-      const px=new Set(pathCells(x).map(c=>c.join(','))),py=new Set(pathCells(y).map(c=>c.join(',')));
-      if(cellsOf(y).some(c=>px.has(c.join(',')))||cellsOf(x).some(c=>py.has(c.join(','))))continue;
-      x.kind=y.kind='school';x.grp=y.grp=g+1;x.tag=y.tag=['#ff3b5c','#4db8ff','#7cff6b'][g];break;
-    }
-  }
-  if(!solvable(list)){
-    list.forEach(p=>{if(p.kind==='flip')p.kind=undefined});
-    if(!solvable(list))list.forEach(p=>{if(p.kind==='school'){p.kind=undefined;p.grp=undefined;p.tag=undefined}});
-  }
-  return list;
-}
-function gen(level,rnd=Math.random){
-  N=Math.min(5+Math.floor((level-1)/4),8);
-  const hard=level%5===0;
-  const nObs=level>=6?Math.min(1+Math.floor((level-6)/4),5):0;
-  const count=Math.min(4+level+(hard?2:0),Math.floor(N*N*0.3));
-  const wantRounds=Math.min(2+Math.floor(level/5),6);
-  let best=null,bestScore=-1;
-  for(let t=0;t<120;t++){
-    const list=[],occ=new Set();
-    for(let i=0;i<nObs;i++){
-      const x=Math.floor(rnd()*N),y=Math.floor(rnd()*N),k=x+','+y;
-      if(occ.has(k))continue;occ.add(k);list.push({x,y,len:1,h:true,d:1,fixed:true});
-    }
-    let buses=0,fails=0;
-    while(buses<count&&fails<250){
-      const h=rnd()<.5,len=rnd()<.6?2:3;
-      const x=Math.floor(rnd()*(h?N-len+1:N)),y=Math.floor(rnd()*(h?N:N-len+1));
-      const ci=buses%COLORS.length;
-      const p={x,y,len,h,d:rnd()<.5?1:-1,color:COLORS[ci],ci};
-      const cs=cellsOf(p).map(c=>c.join(','));
-      if(cs.some(c=>occ.has(c))){fails++;continue}
-      list.push(p);
-      if(!solvable(list)){list.pop();fails++;continue}
-      cs.forEach(c=>occ.add(c));buses++;
-    }
-    if(buses<Math.max(4,Math.ceil(count*.8)))continue;
-    const r=rounds(list);
-    if(r===Infinity||r<2)continue;
-    const score=Math.min(r,wantRounds)*100+buses;
-    if(score>bestScore){bestScore=score;best=list}
-    if(r>=wantRounds&&buses>=count-1)return addSpecials(list,level,rnd);
-  }
-  return best?addSpecials(best,level,rnd):fallbackLevel();
-}
+/* ---------- lógica do puzzle: logica.js ---------- */
 function firstBlocker(p){
   const m=new Map();
-  pieces.forEach(q=>{if(q!==p)cellsOf(q).forEach(c=>m.set(c[0]+','+c[1],q))});
+  pieces.forEach(q=>{if(q!==p&&blocks(q))cellsOf(q).forEach(c=>m.set(c[0]+','+c[1],q))});
   const path=pathCells(p);if(p.d<0)path.reverse();
   for(const c of path){const q=m.get(c[0]+','+c[1]);if(q)return q}
   return null;
@@ -734,9 +722,11 @@ function blockerFor(p){
   if(p.grp){const m=pieces.find(x=>x.grp===p.grp&&x!==p);if(m){q=firstBlocker(m);if(q)return q}}
   return null;
 }
+const frozen=q=>q.ice>0;
+const canGo=q=>!q.fixed&&!frozen(q)&&!blockerFor(q);
 
-let N=5,k=3,cell=48,pieces=[],lives=3,over=false,cleared=0,total=0,streak=0,magnet=false,mode='camp',dlog='',curReg=0,adBusy=false,runOpen=false;
-const PCOST={magnet:40,heart:60};
+let gateN=0,shield=false,k=3,cell=48,pieces=[],lives=3,over=false,cleared=0,total=0,streak=0,magnet=false,mode='camp',dlog='',curReg=0,adBusy=false,runOpen=false;
+const PCOST={magnet:40,heart:60,whistle:80};
 const DAILY_LEVEL=12;
 const dailyNum=()=>Math.floor((new Date(todayStr()+'T00:00:00')-new Date('2026-10-01T00:00:00'))/864e5)+1;
 function ensureDaily(){
@@ -763,7 +753,8 @@ function claimWeekly(i){
 
 function applyTheme(){document.body.style.background='linear-gradient('+REG[curReg].sky.join(',')+') fixed'}
 function spriteOf(p){
-  const kind=(p.kind==='broken'&&p.fixedUp)?'':(p.kind||'');
+  const kind=((p.kind==='broken'&&p.fixedUp)||(p.kind==='ice'&&!(p.ice>0)))?'':(p.kind||'');
+  if(p.kind==='ice'&&p.ice>0)return bus(p.len,p.d,p.h,'#9fd8ff','ice','~'+p.ice,'');
   let color=p.color,skin='';
   if(kind==='vip')color='#2f2f46';
   else if(kind==='school')color='#ffd23f';
@@ -780,7 +771,9 @@ function start(){
     pieces=gen(DAILY_LEVEL,mulberry32(hashStr('bus-'+todayStr())));
   }else pieces=gen(S.level);
   curReg=regionOf(S.level);applyTheme();
-  total=pieces.filter(p=>!p.fixed).length;cleared=0;lives=3;over=false;streak=0;magnet=false;
+  total=pieces.filter(p=>!p.fixed).length;cleared=0;lives=3;over=false;streak=0;magnet=false;gateN=0;
+  if(S.wsLost){S.ws=0;S.wsLost=0;save()}
+  shield=mode==='camp'&&S.ws>=3;
   k=Math.max(2,Math.min(5,Math.floor((Math.min(innerWidth,480)-28-24)/(16*N))));
   cell=16*k;
   const b=$('board');b.innerHTML='';b.classList.remove('fever');
@@ -790,13 +783,15 @@ function start(){
   pieces.forEach((p,i)=>{
     const el=document.createElement('div');el.className='piece'+(p.fixed?' fixed':'');
     const pw=(p.h?p.len:1)*cell,ph=(p.h?1:p.len)*cell;
-    const img=p.fixed?IMG.cone:spriteOf(p);
+    const img=p.fixed?(p.gate?IMG.gateC:IMG.cone):spriteOf(p);
     el.style.cssText=`left:${p.x*cell}px;top:${p.y*cell}px;width:${pw}px;height:${ph}px;background-image:url(${img});animation-delay:${i*45}ms`;
     el.addEventListener('pointerdown',e=>{e.preventDefault();tap(p)});
     p.el=el;b.appendChild(el);
   });
   comboShow();hud();
   if(mode==='camp'&&S.level%5===0)showBanner('FASE DIFÍCIL! Prêmio: baú raro');
+  else if(shield)showBanner('SEQUÊNCIA x'+S.ws+'! ESCUDO ATIVO');
+  else{const f=festNow();if(f&&mode==='camp'&&S.festSeen!==todayStr()){S.festSeen=todayStr();save();showBanner(f.n.toUpperCase()+'! MOEDAS x1,5');setTimeout(()=>spawn(innerWidth/2,innerHeight*.3,50,{speed:8,g:.25,size:8,life:70,colors:f.c,shrink:false}),300)}}
   runOpen=true;ev('level_start',evp());
   if(mode==='camp'){introKinds();autoHelp()}
   if(mode==='camp'){
@@ -821,7 +816,8 @@ function tweenCoins(){
 }
 function claimable(){
   const L=S.missions.list;ensureDaily();
-  return freeReady()||dailyReady()||!S.daily.done||weeklyReady()||L.some(m=>m.prog>=m.target&&!m.claimed)||(L.length>0&&L.every(m=>m.claimed)&&!S.missions.bonus);
+  const R=S.race;
+  return (R&&!R.claimed&&(R.done||Date.now()>=R.end))||freeReady()||dailyReady()||!S.daily.done||weeklyReady()||L.some(m=>m.prog>=m.target&&!m.claimed)||(L.length>0&&L.every(m=>m.claimed)&&!S.missions.bonus);
 }
 function updateDots(){
   $('tabRew').dataset.dot=claimable()?'1':'0';
@@ -837,10 +833,12 @@ function hud(){
   $('cmTxt').textContent=S.chestProg+'/3';
   $('pwMagnet').innerHTML=`<img src="${IMG.magnet}" alt="">`+(S.inv.magnet>0?'x'+S.inv.magnet:`<img src="${IMG.coin}" alt="">${PCOST.magnet}`);
   $('pwHeart').innerHTML=`<img src="${IMG.heart}" alt="">`+(S.inv.heart>0?'x'+S.inv.heart:`<img src="${IMG.coin}" alt="">${PCOST.heart}`);
+  $('pwWhistle').innerHTML=`<img src="${IMG.whistle}" alt="">`+(S.inv.whistle>0?'x'+S.inv.whistle:`<img src="${IMG.coin}" alt="">${PCOST.whistle}`);
   $('pwMagnet').classList.toggle('on',magnet);
-  ['pwMagnet','pwHeart','resetBtn'].forEach(id=>$(id).disabled=dm);
+  ['pwMagnet','pwHeart','pwWhistle','resetBtn'].forEach(id=>$(id).disabled=dm);
   $('hintBtn').disabled=dm||adBusy;
   $('backBtn').style.display=dm?'':'none';
+  const rb=$('rodBtn');rb.style.display=(!dm&&S.level>=ROD_AT)?'':'none';rb.textContent='Modo Rodoviária · fase '+S.rod.level;
   $('help').style.display=(S.level>3||dm)?'none':'';
   tutUpdate();
   updateDots();
@@ -858,6 +856,10 @@ function tap(p){
   ac();clearHints();
   if(p.fixed){
     SFX.tick();p.el.classList.remove('bad');void p.el.offsetWidth;p.el.classList.add('bad');return;
+  }
+  if(frozen(p)&&!magnet){
+    SFX.tick();p.el.classList.remove('bad');void p.el.offsetWidth;p.el.classList.add('bad');
+    const [x,y]=centerOf(p.el);floatText(x,y-10,'CONGELADO: tire mais '+p.ice,'#9fd8ff');return;
   }
   if(magnet){
     magnet=false;$('boardWrap').classList.remove('mag');
@@ -897,12 +899,27 @@ function launch(p){
   for(let i=0;i<n;i++)setTimeout(()=>flyCoin(cx,cy),i*90);
   S.coins+=n;ensureWeekly();S.weekly.contrib++;track('clear',1);
   setTimeout(()=>p.el.remove(),550);
+  pieces.forEach(q=>{
+    if(!(q.ice>0))return;
+    q.ice--;q.el.style.backgroundImage=`url(${spriteOf(q)})`;
+    if(!q.ice){
+      const [x,y]=centerOf(q.el);tone(1200,.12,'triangle',.05,-600);
+      spawn(x,y,14,{speed:3,size:6,life:22,colors:['#ffffff','#bfe9ff','#6ec6ff']});floatText(x,y-10,'DERRETEU!','#bfe9ff');
+    }
+  });
+}
+/* cancelas abrem e fecham a cada 2 saídas */
+function toggleGates(){
+  const gs=pieces.filter(q=>q.gate);if(!gs.length)return;
+  gs.forEach(q=>{q.open=!q.open;q.el.style.backgroundImage=`url(${q.open?IMG.gateO:IMG.gateC})`;q.el.classList.remove('spin');void q.el.offsetWidth;q.el.classList.add('spin')});
+  tone(gs[0].open?660:330,.12,'square',.04,gs[0].open?200:-100);
 }
 function go(p){
   const mate=p.grp?pieces.find(q=>q.grp===p.grp&&q!==p):null;
   streak++;SFX.go();vib(15);
   launch(p);if(mate){launch(mate);SFX.pair();vib([20,30,20])}
   SFX.note(streak);
+  if(++gateN%2===0)toggleGates();
   if(mode==='daily')dlog+='g';
   track('combo',streak,true);
   const b=$('board').getBoundingClientRect();
@@ -916,6 +933,12 @@ function go(p){
   if(!pieces.some(q=>!q.fixed)){over=true;win()}
 }
 function fail(p,q){
+  if(shield){
+    shield=false;streak=0;comboShow();hud();SFX.hint();vib(30);
+    p.el.classList.remove('bad');void p.el.offsetWidth;p.el.classList.add('bad');
+    const [x,y]=centerOf(p.el);floatText(x,y-10,'ESCUDO!','#4db8ff');
+    spawn(x,y,16,{speed:3,size:6,life:24,colors:['#4db8ff','#ffffff','#bfe9ff']});return;
+  }
   lives--;streak=0;if(mode==='daily')dlog+='r';
   comboShow();hud();SFX.fail();vib([40,40,40]);
   p.el.classList.remove('bad');void p.el.offsetWidth;p.el.classList.add('bad');
@@ -934,16 +957,22 @@ function fail(p,q){
         popup({title:'Sem corações!',msg,btn:'Tentar de novo',fn:start,btn2:'Sair do desafio',fn2:()=>{$('ov').style.display='none';exitDaily()}});
         return;
       }
-      popup({title:'Sem corações!',msg,btn:'Tentar de novo',fn:start,btn2:'Reviver (AD)',fn2:()=>{
+      S.wsLost=1;save();
+      popup({title:'Sem corações!',msg:msg+(S.ws>=2?'\nSua sequência de '+S.ws+' vitórias vai acabar!':''),btn:'Tentar de novo',fn:start,btn2:'Reviver (AD)',fn2:()=>{
         const b2=$('ovB2');b2.disabled=true;b2.textContent='Anúncio...';
-        setTimeout(()=>{$('ov').style.display='none';lives=1;over=false;hud();SFX.buy()},adMs());
+        Plat.rewarded('revive',ok=>{
+          if(!ok){b2.disabled=false;b2.textContent='Reviver (AD)';return}
+          $('ov').style.display='none';lives=1;over=false;runOpen=true;S.wsLost=0;save();hud();SFX.buy();
+        });
       }});
     },500);
   }
 }
 function win(){
   if(mode==='daily'){winDaily();return}
-  const done=S.level,stars=Math.max(1,lives),hard=done%5===0,bonus=5+done+lives*2+(hard?10:0);
+  const done=S.level,stars=Math.max(1,lives),hard=done%5===0,tier=Math.min(3,S.ws),fest=festNow();
+  const bonus=Math.round((5+done+lives*2+(hard?10:0))*(1+.25*tier)*(fest?1.5:1));
+  S.ws++;S.bestWs=Math.max(S.bestWs||0,S.ws);const rmsg=raceWin(),fmsg=festWin(fest);
   S.coins+=bonus;S.level++;S.chestProg++;S.best=Math.max(S.best,done);passXp(15);
   runOpen=false;ev('level_win',{level:done,lives});delete S.fails[done];if(S.tutLeft>0)S.tutLeft--;
   let chest=null;
@@ -955,15 +984,18 @@ function win(){
     SFX.win();confetti();tweenCoins();hud();
     const last=S.city.slice(-6);
     last.forEach((_,k)=>setTimeout(()=>tone(600+k*80,.07,'square',.03),700+k*150));
-    popup({title:'Fase '+done+' concluída!',stars,sky:last.map((i,k)=>`<img src="${BIMG[i]}" style="animation-delay:${400+k*150}ms" alt="">`).join(''),msg:'Bônus: +'+bonus+' moedas'+(chest?'\nBaú desbloqueado!':''),
-      btn:chest?'Abrir baú':'Próxima fase',fn:()=>chest?openChest(chest,start):start(),
+    const extra=(S.ws>=2?'\nSequência: '+S.ws+' vitórias'+(S.ws>=3?' (escudo na próxima)':''):'')+(fest?'\n'+fest.n+': moedas x1,5':'')+rmsg+fmsg;
+    const next=()=>{Plat.interstitial();start()};
+    popup({title:'Fase '+done+' concluída!',stars,sky:last.map((i,k)=>`<img src="${BIMG[i]}" style="animation-delay:${400+k*150}ms" alt="">`).join(''),msg:'Bônus: +'+bonus+' moedas'+(chest?'\nBaú desbloqueado!':'')+extra,
+      btn:chest?'Abrir baú':'Próxima fase',fn:()=>chest?openChest(chest,next):next(),
       btn2:'Dobrar bônus (AD)',fn2:()=>{
         const b2=$('ovB2');b2.disabled=true;b2.textContent='Anúncio...';
-        setTimeout(()=>{
+        Plat.rewarded('double',ok=>{
+          if(!ok){b2.disabled=false;b2.textContent='Dobrar bônus (AD)';return}
           S.coins+=bonus;save();tweenCoins();SFX.coin(6);b2.style.display='none';
-          $('ovP').textContent='Bônus dobrado: +'+bonus*2+' moedas!'+(chest?'\nBaú desbloqueado!':'');
+          $('ovP').textContent='Bônus dobrado: +'+bonus*2+' moedas!'+(chest?'\nBaú desbloqueado!':'')+extra;
           spawn(innerWidth/2,innerHeight/2,30,{speed:6,size:8,life:34,g:.12,colors:['#ffd23f','#fff3a0','#fff']});
-        },1200);
+        });
       }});
   },550);
 }
@@ -990,16 +1022,16 @@ function exitDaily(){mode='camp';tab('game');start()}
 function dailyText(){
   const D=S.daily,sq=[...(D.log||'')].map(c=>c==='g'?'🟩':'🟥'),rows=[];
   for(let i=0;i<sq.length;i+=10)rows.push(sq.slice(i,i+10).join(''));
-  return 'Cidade Bus Jam · Diário #'+dailyNum()+'\n'+'⭐'.repeat(D.stars||1)+' · '+D.errs+' erro(s) · '+D.attempts+' tentativa(s)\n'+rows.join('\n');
+  return tr('Cidade Bus Jam · Diário #'+dailyNum())+'\n'+'⭐'.repeat(D.stars||1)+' · '+D.errs+' erro(s) · '+D.attempts+' tentativa(s)\n'+rows.join('\n');
 }
 function dailyCanvas(){
   const D=S.daily,log=[...(D.log||'')],cols=10,cs=22,pd=20,rows=Math.max(1,Math.ceil(log.length/cols));
   const c=C(pd*2+cols*cs,120+rows*cs+30),g=c.getContext('2d');
   g.fillStyle='#1b2a55';g.fillRect(0,0,c.width,c.height);
-  g.fillStyle='#ffd23f';g.font="bold 15px 'Press Start 2P',monospace";g.fillText('CIDADE BUS JAM',pd,36);
+  g.fillStyle='#ffd23f';g.font="bold 15px 'Press Start 2P',monospace";g.fillText(tr('CIDADE BUS JAM'),pd,36);
   g.fillStyle='#fff';g.font="11px 'Press Start 2P',monospace";
-  g.fillText('DIÁRIO #'+dailyNum(),pd,62);
-  g.fillText((D.stars||1)+' ESTRELA(S) · '+D.errs+' ERRO(S)',pd,86);
+  g.fillText(tr('DIÁRIO #'+dailyNum()),pd,62);
+  g.fillText(tr((D.stars||1)+' ESTRELA(S) · '+D.errs+' ERRO(S)'),pd,86);
   log.forEach((ch,i)=>{
     g.fillStyle=ch==='g'?'#4fd13f':'#ff4d6d';
     g.fillRect(pd+(i%cols)*cs+1,110+Math.floor(i/cols)*cs+1,cs-3,cs-3);
@@ -1014,6 +1046,7 @@ function copyText(t){
 }
 async function shareDaily(){
   const text=dailyText();
+  if(Plat.shareImage(dailyCanvas(),text))return;
   try{
     const blob=await new Promise(r=>dailyCanvas().toBlob(r));
     const file=new File([blob],'bus-jam-diario.png',{type:'image/png'});
@@ -1050,11 +1083,15 @@ const KIND_TIP={
   vip:'Ônibus VIP (dourado) rende 3 moedas!',
   broken:'Ônibus quebrado (cinza): toque 2 vezes. O 1º toque conserta!',
   school:'Ônibus escolar (amarelo): sai em dupla com o parceiro de mesmo marcador. Os dois precisam estar livres!',
-  flip:'Ônibus giratório (anel azul): a direção inverte a cada 3 segundos. Espere a seta certa!'
+  flip:'Ônibus giratório (anel azul): a direção inverte a cada 3 segundos. Espere a seta certa!',
+  long:'Ônibus articulado: é comprido e precisa de muito espaço para sair!',
+  ice:'Ônibus congelado: o número mostra quantos outros ônibus precisam sair para ele derreter.',
+  gate:'Cancela: abre e fecha a cada 2 ônibus que saem. Passe quando estiver aberta!'
 };
+const isKind=(p,k)=>k==='long'?p.len===4:k==='gate'?!!p.gate:p.kind===k;
 const TUT=['Toque num ônibus LIVRE para ele sair da rua. Siga a seta!','Se algo estiver na frente, o ônibus bate e você perde um coração. Olhe a seta antes de tocar!','Tire vários ônibus seguidos sem errar para fazer COMBO e ganhar moedas extras!'];
 const evp=()=>mode==='camp'?{level:S.level}:{daily:1};
-function freeBus(){return pieces.find(q=>!q.fixed&&!blockerFor(q)&&!(q.kind==='broken'&&!q.fixedUp))||pieces.find(q=>!q.fixed&&!blockerFor(q))}
+function freeBus(){return pieces.find(q=>canGo(q)&&!(q.kind==='broken'&&!q.fixedUp))||pieces.find(canGo)}
 function tutUpdate(){
   const tip=$('tip'),hand=$('hand');
   let txt='',showHand=false;
@@ -1074,10 +1111,10 @@ function showTip(t,ms){tipText=t;tipUntil=Date.now()+ms;tutUpdate();setTimeout(t
 function showBanner(t){const b=$('banner');$('bannerTxt').textContent=t;b.classList.remove('show');void b.offsetWidth;b.classList.add('show')}
 function introKinds(){
   const msgs=[];
-  ['vip','broken','school','flip'].forEach(k=>{
-    if(pieces.some(p=>p.kind===k)&&!S.seen[k]){
+  Object.keys(KIND_TIP).forEach(k=>{
+    if(pieces.some(p=>isKind(p,k))&&!S.seen[k]){
       S.seen[k]=1;msgs.push(KIND_TIP[k]);
-      pieces.filter(p=>p.kind===k).forEach(p=>p.el.classList.add('hint'));
+      pieces.filter(p=>isKind(p,k)).forEach(p=>p.el.classList.add('hint'));
     }
   });
   if(msgs.length){save();setTimeout(()=>pieces.forEach(p=>p.el&&p.el.classList.remove('hint')),2800);showTip(msgs[0],7000)}
@@ -1094,13 +1131,17 @@ function renderSettings(){
     `<button class="btn sec wide" onclick="togSound()">Som: ${on(!muted)}</button>`+
     `<button class="btn sec wide" onclick="togSet('vib')">Vibração: ${on(S.set.vib)}</button>`+
     `<button class="btn sec wide" onclick="togSet('cb')">Modo daltônico: ${on(S.set.cb)}</button>`+
+    `<button class="btn sec wide" onclick="nextLang()">Idioma: ${{pt:'Português',en:'English',es:'Español'}[LANG]}</button>`+
     `<button class="btn sec wide" onclick="redoTut()">Rever dicas do tutorial</button>`+
     `<button class="btn sec wide" onclick="showStats()">Dados do jogo</button>`+
+    (Plat.app?`<button class="btn sec wide" onclick="try{AndroidApp.privacyOptions()}catch(e){}">Privacidade dos anúncios</button>`:'')+
+    `<button class="btn sec wide" onclick="location.href='privacidade.html'">Política de privacidade</button>`+
     (typeof settingsExtra==='function'?settingsExtra():'');
 }
+function nextLang(){S.lang={pt:'en',en:'es',es:'pt'}[LANG];save();location.reload()}
 function openSettings(){renderSettings();$('setOv').style.display='flex'}
 function togSound(){$('muteBtn').onclick();renderSettings()}
-function togSet(k){S.set[k]=!S.set[k];save();renderSettings();if(k==='cb')refreshSprites()}
+function togSet(k){S.set[k]=!S.set[k];save();renderSettings();if(k==='cb'){refreshSprites();if(RD&&!$('rodView').classList.contains('hidden'))rodRender()}}
 function redoTut(){S.tutLeft=3;S.seen={};save();$('setOv').style.display='none';tab('game');hud()}
 function showStats(){$('setOv').style.display='none';popup({title:'Dados do jogo',msg:analyticsSummary(),btn:'Fechar',fn:()=>{}})}
 
@@ -1108,7 +1149,7 @@ function showStats(){$('setOv').style.display='none';popup({title:'Dados do jogo
 $('pwMagnet').onclick=()=>{
   if(over)return;ac();
   if(magnet){magnet=false;$('boardWrap').classList.remove('mag');hud();return}
-  if(S.inv.magnet<1&&S.coins<PCOST.magnet){SFX.tick();const [x,y]=centerOf($('pwMagnet'));floatText(x,y-20,'SEM MOEDAS','#ff6b81');return}
+  if(S.inv.magnet<1&&S.coins<PCOST.magnet){adOffer('magnet');return}
   magnet=true;$('boardWrap').classList.add('mag');hud();
   const [x,y]=centerOf($('boardWrap'));floatText(x,y,'TOQUE EM UM ÔNIBUS','#4db8ff');
 };
@@ -1116,20 +1157,31 @@ $('pwHeart').onclick=()=>{
   if(over)return;ac();
   const [x,y]=centerOf($('pwHeart'));
   if(lives>=3){SFX.tick();floatText(x,y-20,'CORAÇÕES CHEIOS','#ffb3c1');return}
-  if(S.inv.heart<1&&S.coins<PCOST.heart){SFX.tick();floatText(x,y-20,'SEM MOEDAS','#ff6b81');return}
+  if(S.inv.heart<1&&S.coins<PCOST.heart){adOffer('heart');return}
   if(S.inv.heart>0)S.inv.heart--;else S.coins-=PCOST.heart;
   lives++;save();tweenCoins();hud();SFX.buy();vib(20);
   const [lx,ly]=centerOf($('lives'));
   spawn(lx,ly,16,{speed:3,size:6,life:26,colors:['#ff3b5c','#ffb3c1','#fff']});
 };
+/* apito: todos os ônibus livres saem de uma vez */
+$('pwWhistle').onclick=()=>{
+  if(over)return;ac();
+  const [x,y]=centerOf($('pwWhistle')),fl=pieces.filter(q=>canGo(q)&&!(q.kind==='broken'&&!q.fixedUp));
+  if(!fl.length){SFX.tick();floatText(x,y-20,'NENHUM LIVRE','#ff6b81');return}
+  if(S.inv.whistle<1&&S.coins<PCOST.whistle){adOffer('whistle');return}
+  if(S.inv.whistle>0)S.inv.whistle--;else S.coins-=PCOST.whistle;
+  save();tweenCoins();tone(1760,.25,'square',.05,200);tone(1760,.25,'square',.05,200,.3);vib([20,40,20]);
+  ev('booster',{b:'whistle'});
+  fl.forEach((p,i)=>setTimeout(()=>{if(!over&&pieces.includes(p)&&canGo(p))go(p)},150+i*140));
+};
 $('hintBtn').onclick=()=>{
   if(over)return;const b=$('hintBtn');if(b.disabled)return;
   adBusy=true;b.disabled=true;b.textContent='Anúncio...';
-  setTimeout(()=>{
+  Plat.rewarded('hint',ok=>{
     adBusy=false;b.disabled=mode==='daily';b.textContent='Dica (AD)';
-    const p=pieces.find(q=>!q.fixed&&!blockerFor(q));
+    const p=ok&&pieces.find(canGo);
     if(p){p.el.classList.add('hint');SFX.hint()}
-  },adMs());
+  });
 };
 $('resetBtn').onclick=()=>{ac();start()};
 $('backBtn').onclick=()=>{ac();exitDaily()};
@@ -1148,8 +1200,8 @@ function renderRew(){
   const idx=(S.login.streak-1)%7,rdy=dailyReady(),fr=freeReady(),D=S.daily;
   let h=`<div class="pill title">Prêmios</div>`;
   h+=`<div class="card"><div class="ch"><img src="${IMG.star}" alt=""><div class="grow"><b>DESAFIO DO DIA #${dailyNum()}</b><div class="sub">Mesmo tabuleiro para todo mundo · sequência: ${D.streak}</div>${D.done?`<div class="sub">Concluído: ${D.stars} estrela(s) · ${D.errs} erro(s)</div>`:''}</div><button class="btn" onclick="startDaily()">${D.done?'Rejogar':'Jogar'}</button></div>${D.done?`<button class="btn sec wide" style="margin-top:10px" onclick="shareDaily()">Compartilhar resultado</button>`:''}</div>`;
-  h+=`<div class="card"><div class="ch"><img src="${IMG.chest}" alt=""><div class="grow"><b>BAÚ GRÁTIS</b><div class="sub" id="freeTimer" data-r="${fr?1:0}">${fr?'Pronto para abrir!':fmt(S.freeAt-Date.now())}</div></div><button class="btn" ${fr?'':'disabled'} onclick="openFree()">Abrir</button></div></div>`;
-  h+=(typeof boardCard==='function'?boardCard():'')+passCard()+offersCard();
+  h+=`<div class="card"><div class="ch"><img src="${IMG.chest}" alt=""><div class="grow"><b>BAÚ GRÁTIS</b><div class="sub" id="freeTimer" data-r="${fr?1:0}">${fr?'Pronto para abrir!':fmt(S.freeAt-Date.now())}</div></div><button class="btn" ${fr?'':'disabled'} onclick="openFree()">Abrir</button></div>${!fr&&adDay().chest<2?`<button class="btn sec wide" style="margin-top:10px" onclick="openFreeAd()">Abrir agora (AD) · ${2-adDay().chest} hoje</button>`:''}</div>`;
+  h+=festCard()+raceCard()+(typeof boardCard==='function'?boardCard():'')+passCard()+offersCard();
   const tot=commTotal(),pct=Math.min(100,tot/WGOAL*100);
   h+=`<div class="card"><b>MEGA ENGARRAFAMENTO</b><div class="sub">Meta da semana: ${WGOAL.toLocaleString('pt-BR')} ônibus · prévia com números simulados (sem servidor)</div><div class="mbar"><i style="width:${pct}%"></i></div><div class="sub">Comunidade: ${Math.min(tot,WGOAL).toLocaleString('pt-BR')} · Você: ${S.weekly.contrib} (mín. 20 para resgatar)</div>`+
     WMS.map((m,i)=>{
@@ -1173,7 +1225,95 @@ function renderRew(){
 }
 
 /* ---------- eventos, passe e ofertas ---------- */
-const adMs=()=>S.noAds?0:1200;
+/* ---------- plataforma: app Android (AndroidApp) ou navegador ----------
+   No app: AdMob (premiado e intersticial), Google Play Billing e lembretes.
+   No navegador: o "anúncio" é uma espera curta e as compras só são simuladas em teste (localhost ou ?sim). */
+const Plat={
+  app:typeof window.AndroidApp!=='undefined',
+  sim:/^(localhost|127\.0\.0\.1)$/.test(location.hostname)||/[?&]sim\b/.test(location.search),
+  rwCb:null,rwT:0,
+  init(){if(this.app)try{AndroidApp.init()}catch(e){}},
+  /* anúncio premiado: cb(true) se a pessoa ganhou o prêmio */
+  rewarded(where,cb){
+    ev('ad_reward',{w:where});
+    if(S.noAds){cb(true);return}
+    if(!this.app){setTimeout(()=>cb(true),1200);return}
+    this.rwCb=cb;clearTimeout(this.rwT);
+    this.rwT=setTimeout(()=>this.onReward(false),90000);
+    try{AndroidApp.showRewarded()}catch(e){this.onReward(false)}
+  },
+  onReward(ok){
+    clearTimeout(this.rwT);const cb=this.rwCb;this.rwCb=null;if(!cb)return;
+    if(ok)ev('ad_reward_ok',{});
+    else floatText(innerWidth/2,innerHeight/2,'ANÚNCIO INDISPONÍVEL','#ff6b81');
+    cb(ok);
+  },
+  /* intersticial entre fases: a partir da fase 8, a cada 3 vitórias e no mínimo 2,5 min entre um e outro */
+  interstitial(){
+    const A=S.adc;A.wins=(A.wins||0)+1;save();
+    if(!this.app||S.noAds||S.level<8||A.wins<3||Date.now()-(A.last||0)<150e3)return;
+    A.wins=0;A.last=Date.now();save();ev('ad_inter',{level:S.level});
+    try{AndroidApp.showInterstitial()}catch(e){}
+  },
+  buy(id){
+    ev('buy_click',{id});
+    if(this.app){try{AndroidApp.buy(id)}catch(e){}return}
+    if(!this.sim){popup({title:'Loja',msg:'As compras ficam disponíveis no app Cidade Bus Jam da Google Play.',btn:'OK',fn:()=>{}});return}
+    const P=PRODUCTS[id];
+    popup({title:P.n,msg:'COMPRA SIMULADA (teste, sem cobrança).\n'+P.d,btn:'Confirmar',fn:()=>grant(id,'sim-'+Date.now()),btn2:'Cancelar',fn2:()=>{$('ov').style.display='none'}});
+  },
+  priceOf(id){return S.prices[id]||PRODUCTS[id].p},
+  /* lembretes locais (só no app): avisam quando algo fica pronto */
+  schedule(){
+    if(!this.app)return;
+    const L=[],now=Date.now();
+    if(S.freeAt>now)L.push({id:1,at:S.freeAt,t:'Baú grátis pronto!',b:'Seu baú grátis já pode ser aberto.'});
+    if(S.city.length&&S.cityAt)L.push({id:2,at:Math.max(now+3600e3,S.cityAt+6*3600e3),t:'A cidade encheu o cofre',b:'Sua renda chegou ao máximo de 6 horas. Venha coletar!'});
+    const am=new Date();am.setDate(am.getDate()+1);am.setHours(19,0,0,0);
+    L.push({id:3,at:am.getTime(),t:'Desafio do dia #'+(dailyNum()+1),b:'Novo tabuleiro e nova recompensa diária esperando por você.'});
+    if(S.race&&S.race.end>now&&!S.race.done)L.push({id:4,at:Math.max(now+60e3,S.race.end-2*3600e3),t:'A corrida está acabando!',b:'Faltam 2 horas para a corrida de ônibus terminar.'});
+    L.forEach(o=>{o.t=tr(o.t);o.b=tr(o.b)});
+    try{AndroidApp.schedule(JSON.stringify(L))}catch(e){}
+  },
+  shareImage(canvas,text){
+    if(!this.app)return false;
+    try{AndroidApp.shareImage(canvas.toDataURL('image/png').split(',')[1],text);return true}catch(e){return false}
+  }
+};
+/* produtos cadastrados no Play Console (ids iguais aos do BillingManager.kt) */
+const PRODUCTS={
+  remove_ads:{n:'Remover anúncios',d:'Sem anúncios entre as fases. Dica, reviver e bônus dobrados passam a ser instantâneos.',p:'R$ 14,90',once:1},
+  welcome_pack:{n:'Pacote Inicial',d:'500 moedas, 3 ímãs, 3 corações, 3 apitos e 1 baú épico.',p:'R$ 4,90',once:1},
+  pass_month:{n:'Passe Premium do mês',d:'Libera a trilha premium deste mês, com skin Ouro no nível 20.',p:'R$ 9,90'},
+  coins_small:{n:'Saco de moedas',d:'1.200 moedas.',p:'R$ 6,90'},
+  coins_big:{n:'Cofre de moedas',d:'4.000 moedas, 5 ímãs e 5 apitos.',p:'R$ 19,90'}
+};
+/* entrega a compra uma vez só por recibo */
+function grant(id,token){
+  if(!PRODUCTS[id])return;
+  if(token){if(S.tok.includes(token))return;S.tok.push(token);if(S.tok.length>60)S.tok.shift()}
+  ev('buy_ok',{id});SFX.buy();
+  let chest=null;
+  if(id==='remove_ads'){S.noAds=true;S.buy.noads=1}
+  else if(id==='welcome_pack'){S.buy.welcome=1;S.coins+=500;S.inv.magnet+=3;S.inv.heart+=3;S.inv.whistle+=3;chest='epic'}
+  else if(id==='pass_month'){ensurePass();S.pass.prem=true}
+  else if(id==='coins_small')S.coins+=1200;
+  else if(id==='coins_big'){S.coins+=4000;S.inv.magnet+=5;S.inv.whistle+=5}
+  save();hud();tweenCoins();
+  const after=()=>{if(!$('rewView').classList.contains('hidden'))renderRew()};
+  if(chest)giveReward({t:'chest',v:chest},after);
+  else popup({title:'Compra concluída!',msg:PRODUCTS[id].n+'\n'+PRODUCTS[id].d,btn:'OK',fn:after});
+}
+/* respostas do app Android */
+window.onMonet=m=>{
+  if(!m||typeof m!=='object')return;
+  if(m.type==='reward')Plat.onReward(!!m.ok);
+  else if(m.type==='prices'){S.prices=Object.assign({},S.prices,m.prices||{});save();if(!$('rewView').classList.contains('hidden'))renderRew()}
+  else if(m.type==='purchased')grant(m.id,m.token);
+  else if(m.type==='owned')(m.ids||[]).forEach(id=>{if(id==='remove_ads'&&!S.noAds)grant(id,null);if(id==='welcome_pack'&&!S.buy.welcome)grant(id,null)});
+  else if(m.type==='error')floatText(innerWidth/2,innerHeight/2,'COMPRA NÃO CONCLUÍDA','#ff6b81');
+};
+document.addEventListener('visibilitychange',()=>{if(document.hidden)Plat.schedule()});
 /* passe de temporada (mensal) */
 const PTIERS=20,PXP=50;
 const PF=i=>i===19?{t:'chest',v:'rare'}:i%5===4?{t:'chest',v:'level'}:i%3===1?{t:'magnet',v:1}:{t:'coins',v:20+i*3};
@@ -1189,23 +1329,83 @@ function claimPass(track){
     if(r.t==='coins')S.coins+=r.v;else if(r.t==='skin'){if(!S.skins.includes(r.v))S.skins.push(r.v)}else if(r.t==='chest')chests.push(r);else S.inv[r.t]+=r.v}
   if(!any)return;save();hud();SFX.buy();tweenCoins();
   const next=()=>{const r=chests.shift();if(!r){renderRew();return}giveReward(r,next)};next()}
-function buyPass(){
-  popup({title:'Passe Premium',msg:'COMPRA SIMULADA (sem cobrança real).\nLibera a trilha premium deste mês, com skin Ouro no nível 20.',btn:'Confirmar',fn:()=>{S.pass.prem=true;ev('buy_pass');save();renderRew()},btn2:'Cancelar',fn2:()=>{$('ov').style.display='none'}})}
 function passCard(){
   ensurePass();const P=S.pass,t=passTier(),inT=P.xp%PXP,full=t>=PTIERS;
   const fr=[...Array(t).keys()].filter(i=>!P.fr.includes(i)).length,pr=P.prem?[...Array(t).keys()].filter(i=>!P.pr.includes(i)).length:0;
   const cells=[...Array(PTIERS).keys()].map(i=>`<i class="pt ${i<t?'on':''} ${P.fr.includes(i)?'cl':''} ${i===19?'big':''}"></i>`).join('');
   return `<div class="card"><b>PASSE DA TEMPORADA</b><div class="sub">Nível ${t}/${PTIERS} · +15 XP por fase, +40 no desafio diário · reinicia todo mês</div><div class="mbar"><i style="width:${full?100:inT/PXP*100}%"></i></div><div class="ptier">${cells}</div>
   <div class="ch2"><span class="sub">Grátis: ${fr} para resgatar</span><button class="btn" ${fr?'':'disabled'} onclick="claimPass('f')">Resgatar</button></div>
-  <div class="ch2"><span class="sub">Premium: ${P.prem?pr+' para resgatar':'skin Ouro + baús épicos'}</span>${P.prem?`<button class="btn" ${pr?'':'disabled'} onclick="claimPass('p')">Resgatar</button>`:`<button class="btn" onclick="buyPass()">Premium (simulado)</button>`}</div></div>`}
-/* ofertas simuladas */
-function buyWelcome(){popup({title:'Pacote Inicial',msg:'COMPRA SIMULADA (sem cobrança real).\n500 moedas, 3 ímãs, 3 corações e 1 baú épico.',btn:'Confirmar',fn:()=>{S.buy.welcome=1;S.coins+=500;S.inv.magnet+=3;S.inv.heart+=3;ev('buy_welcome');save();hud();tweenCoins();giveReward({t:'chest',v:'epic'},renderRew)},btn2:'Cancelar',fn2:()=>{$('ov').style.display='none'}})}
-function buyNoAds(){popup({title:'Remover anúncios',msg:'COMPRA SIMULADA (sem cobrança real).\nDicas e reviver passam a ser instantâneos, sem espera de anúncio.',btn:'Confirmar',fn:()=>{S.noAds=true;S.buy.noads=1;ev('buy_noads');save();renderRew()},btn2:'Cancelar',fn2:()=>{$('ov').style.display='none'}})}
+  <div class="ch2"><span class="sub">Premium: ${P.prem?pr+' para resgatar':'skin Ouro + baús épicos'}</span>${P.prem?`<button class="btn" ${pr?'':'disabled'} onclick="claimPass('p')">Resgatar</button>`:`<button class="btn" onclick="Plat.buy('pass_month')">${Plat.priceOf('pass_month')}</button>`}</div></div>`}
+/* corrida de 24 h contra 6 motoristas simulados: quem passar 12 fases primeiro */
+const RACE={goal:12,dur:24*3600e3,minLevel:10,names:['Tião Lotação','Dona Cida','Zé Buzão','Marquinhos','Lu do Corredor','Seu Jorge','Bia Motorista','Neto Expresso','Rita da Linha','Carlão']};
+const RACE_PRIZE=[{t:'chest',v:'epic'},{t:'chest',v:'rare'},{t:'chest',v:'level'}];
+function raceJoin(){
+  if(S.level<RACE.minLevel||(S.race&&!S.race.claimed))return;
+  const now=Date.now(),rnd=mulberry32(now|0),pool=RACE.names.slice();
+  const bots=[...Array(6)].map(()=>{const n=pool.splice((rnd()*pool.length)|0,1)[0];return{n,spd:.55+rnd()*1.05}});
+  S.race={start:now,end:now+RACE.dur,me:0,bots,done:0,place:0,claimed:0};save();ev('race_join',{});renderRew();
+}
+/* progresso de um adversário no instante t (termina em dur/spd) */
+const botProg=(b,t)=>Math.min(RACE.goal,Math.floor(RACE.goal*Math.min(1,Math.pow(Math.max(0,(t-S.race.start)/RACE.dur*b.spd),.9))));
+const botEnd=b=>S.race.start+RACE.dur/b.spd;
+function raceWin(){
+  const R=S.race;if(!R||R.done||Date.now()>=R.end)return '';
+  R.me++;
+  if(R.me>=RACE.goal){R.done=1;R.doneAt=Date.now();R.place=1+R.bots.filter(b=>botEnd(b)<Date.now()).length;ev('race_done',{place:R.place});return '\nCorrida: você chegou em '+R.place+'º lugar!'}
+  return '\nCorrida: '+R.me+'/'+RACE.goal+' fases';
+}
+function raceClaim(){
+  const R=S.race;if(!R||R.claimed)return;
+  if(!R.done&&Date.now()<R.end)return;
+  R.claimed=1;save();
+  const r=R.done&&R.place<=3?RACE_PRIZE[R.place-1]:{t:'coins',v:R.done?80:30};
+  if(R.done&&R.place===1)S.coins+=300;
+  giveReward(r,()=>renderRew());
+}
+function raceCard(){
+  if(S.level<RACE.minLevel)return `<div class="card"><b>CORRIDA DE ÔNIBUS</b><div class="sub">Libera na fase ${RACE.minLevel}</div></div>`;
+  const R=S.race;
+  if(!R||R.claimed)return `<div class="card"><div class="ch"><img src="${IMG.whistle}" alt=""><div class="grow"><b>CORRIDA DE ÔNIBUS</b><div class="sub">Passe ${RACE.goal} fases antes de 6 motoristas em até 24 h. 1º lugar: baú épico + 300 moedas.</div></div><button class="btn" onclick="raceJoin()">Correr</button></div></div>`;
+  const now=Math.min(Date.now(),R.end),rows=R.bots.map(b=>({n:b.n,p:botProg(b,R.done?Math.min(now,R.doneAt||now):now),me:0})).concat([{n:'Você',p:R.me,me:1}]).sort((a,b)=>b.p-a.p||b.me-a.me);
+  const fim=R.done||Date.now()>=R.end;
+  return `<div class="card"><b>CORRIDA DE ÔNIBUS</b><div class="sub">${fim?(R.done?'Você terminou em '+R.place+'º lugar!':'Tempo esgotado.'):'Termina em '+fmt(R.end-Date.now())} · adversários simulados</div>`+
+    rows.map((r,i)=>`<div class="ch2"><span class="sub" style="${r.me?'color:#ffd23f':''}">${i+1}. ${r.n}</span><span class="sub">${r.p}/${RACE.goal}</span></div><div class="mbar"><i style="width:${r.p/RACE.goal*100}%"></i></div>`).join('')+
+    (fim?`<button class="btn wide" style="margin-top:10px" onclick="raceClaim()">Resgatar prêmio</button>`:'')+`</div>`;
+}
+/* festas do calendário: moedas x1,5 e skin exclusiva por 10 fases */
+function easter(y){const a=y%19,b=Math.floor(y/100),c=y%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451),mo=Math.floor((h+l-7*m+114)/31),da=(h+l-7*m+114)%31+1;return new Date(y,mo-1,da)}
+function festNow(d=new Date()){
+  const y=d.getFullYear(),day=new Date(y,d.getMonth(),d.getDate()),E=easter(y),dd=n=>new Date(E.getTime()+n*864e5);
+  const L=[
+    {k:'carnaval',n:'Carnaval',from:dd(-53),to:dd(-46),c:['#ff4fd8','#ffd23f','#7cff6b','#4de3ff']},
+    {k:'pascoa',n:'Páscoa',from:dd(-7),to:dd(1),c:['#ffd1e8','#b6f0e6','#fff3a0']},
+    {k:'junina',n:'Festa Junina',from:new Date(y,5,1),to:new Date(y,5,30),c:['#e63946','#ffd23f','#2a9d8f']},
+    {k:'saci',n:'Festa do Saci',from:new Date(y,9,24),to:new Date(y,10,2),c:['#e63946','#ff8a1f','#3a2a1a']},
+    {k:'natal',n:'Natal',from:new Date(y,11,10),to:new Date(y+1,0,6),c:['#c1121f','#ffffff','#2e9e4f']},
+    {k:'natal',n:'Natal',from:new Date(y-1,11,10),to:new Date(y,0,6),c:['#c1121f','#ffffff','#2e9e4f']}
+  ];
+  const f=L.find(f=>day>=f.from&&day<=f.to);
+  return f?Object.assign({key:f.k+'-'+f.from.getFullYear(),goal:10},f):null;
+}
+function festWin(f){
+  if(!f)return '';
+  const F=S.fest[f.key]=S.fest[f.key]||{n:0,got:0};F.n++;
+  if(F.n>=f.goal&&!F.got){F.got=1;if(!S.skins.includes(f.k))S.skins.push(f.k);ev('fest_skin',{k:f.k});return '\nSkin '+SK[f.k].n+' conquistada!'}
+  return F.got?'':'\n'+f.n+': '+F.n+'/'+f.goal+' fases para a skin';
+}
+function festCard(){
+  const f=festNow();if(!f)return '';
+  const F=S.fest[f.key]||{n:0,got:0};
+  return `<div class="card"><div class="ch"><img src="${skinPrev(f.k)}" alt="" style="height:24px"><div class="grow"><b>${f.n.toUpperCase()}</b><div class="sub">Até ${f.to.toLocaleDateString('pt-BR')} · moedas x1,5 em todas as fases</div><div class="sub">${F.got?'Skin '+SK[f.k].n+' conquistada!':'Vença '+f.goal+' fases para ganhar a skin '+SK[f.k].n+': '+Math.min(F.n,f.goal)+'/'+f.goal}</div></div></div><div class="mbar"><i style="width:${Math.min(100,F.n/f.goal*100)}%"></i></div></div>`;
+}
+/* loja */
 function offersCard(){
-  let h='';
-  if(S.level>5&&!S.buy.welcome)h+=`<div class="ch2"><span class="sub">Pacote Inicial: 500 moedas + 3 ímãs + 3 corações + baú épico</span><button class="btn" onclick="buyWelcome()">Ver oferta</button></div>`;
-  if(!S.noAds)h+=`<div class="ch2"><span class="sub">Remover esperas de anúncio (dica/reviver instantâneos)</span><button class="btn" onclick="buyNoAds()">Ver oferta</button></div>`;
-  return h?`<div class="card"><b>OFERTAS</b><div class="sub">Compras simuladas nesta versão: nenhuma cobrança real</div>${h}</div>`:''}
+  const row=id=>`<div class="ch2"><span class="sub"><b style="font-size:8px">${PRODUCTS[id].n}</b><br>${PRODUCTS[id].d}</span><button class="btn" onclick="Plat.buy('${id}')">${Plat.priceOf(id)}</button></div>`;
+  const ids=[];
+  if(S.level>5&&!S.buy.welcome)ids.push('welcome_pack');
+  if(!S.noAds)ids.push('remove_ads');
+  ids.push('coins_small','coins_big');
+  return `<div class="card"><b>LOJA</b>${!Plat.app&&Plat.sim?'<div class="sub">Modo de teste: compras simuladas, sem cobrança</div>':''}${ids.map(row).join('')}</div>`}
 function equip(id){if(!S.skins.includes(id))return;S.skin=id;save();SFX.buy();renderCol();refreshSprites()}
 function renderCol(){
   let h='<div class="pill title">Coleção</div>';
@@ -1214,13 +1414,107 @@ function renderCol(){
       const own=S.skins.includes(s.id);
       return `<div class="sk ${own?'':'lock'} ${S.skin===s.id?'eq':''}" style="border-color:${RAR[s.r].col}" onclick="equip('${s.id}')"><img src="${skinPrev(s.id)}" alt="">${own?s.n:'???'}</div>`;
     }).join('')+`</div></div>`;
-  h+=`<div class="card"><b>PASSAPORTE DO BRASIL</b>`+REG.map((rg,r)=>{
+  h+=`<div class="card"><b>PASSAPORTE</b>`+REG.map((rg,r)=>{
     const ids=[10+2*r,11+2*r],have=ids.filter(i=>S.city.includes(i)).length,unl=S.level>=r*25+1;
-    return `<div class="mis"><div>${rg.n.toUpperCase()}</div><div class="sub">${unl?have+'/2 pontos turísticos':'Chegue à fase '+(r*25+1)+' para liberar'}</div><div class="lm">${ids.map(i=>`<img class="${S.city.includes(i)?'':'off'}" src="${BIMG[i]}" alt="">`).join('')}</div></div>`;
+    return (r===0?'<div class="sub" style="margin-top:8px;color:#ffd23f">BRASIL</div>':r===7?'<div class="sub" style="margin-top:14px;color:#ffd23f">MUNDO</div>':'')+`<div class="mis"><div>${rg.n.toUpperCase()}</div><div class="sub">${unl?have+'/2 pontos turísticos':'Chegue à fase '+(r*25+1)+' para liberar'}</div><div class="lm">${ids.map(i=>`<img class="${S.city.includes(i)?'':'off'}" src="${BIMG[i]}" alt="">`).join('')}</div></div>`;
   }).join('')+`</div>`;
   $('colView').innerHTML=h;
 }
 const lmUnlocked=i=>i<10||S.level>=Math.floor((i-10)/2)*25+1;
+
+/* ---------- Modo Rodoviária (regras em logica.js) ---------- */
+const ROD_AT=10,RCOL=['#e63946','#2a9d8f','#f4a261','#8e6cef','#06a6d4','#7cb518'];
+const RMARK=[[],[[2,4],[3,4]],[[2,3],[3,5]],[[1,4],[2,4],[3,4],[4,4]],[[2,3],[3,3],[2,5],[3,5]],[[1,3],[4,3],[2,4],[3,4],[1,5],[4,5]]];
+const PSPR={};
+function pax(c){
+  const key=c+(S.set.cb?'cb':'');if(PSPR[key])return PSPR[key];
+  const cv=C(6,10),g=cv.getContext('2d'),col=RCOL[c];
+  R(g,2,0,2,2,'#ffd9b0');R(g,1,2,4,4,col);R(g,0,3,1,2,col);R(g,5,3,1,2,col);R(g,1,6,4,1,shade(col,-.3));R(g,1,7,1,3,'#1b2a55');R(g,4,7,1,3,'#1b2a55');R(g,2,0,2,1,'#5a3d2b');
+  if(S.set.cb)RMARK[c].forEach(([x,y])=>R(g,x,y,1,1,'#ffffff'));   // modo daltônico: marca branca diferente por cor
+  return PSPR[key]=cv.toDataURL();
+}
+let RD=null;
+function rodStart(){
+  const L=S.rod.level,lv=genRod(L,mulberry32(hashStr('rod-'+L)));
+  RD={lv,grid:lv.grid.slice(),bi:0,seats:0,bench:[],max:lv.bench,over:false,seatBuy:0};
+  ev('rod_start',{rod:L});rodRender();
+}
+function rodRender(){
+  const D=RD,lv=D.lv;
+  $('rodLvl').textContent='RODOVIÁRIA '+S.rod.level;
+  $('rodBuses').textContent='ÔNIBUS '+Math.min(D.bi+1,lv.buses.length)+'/'+lv.buses.length;
+  $('rodCoinImg').src=IMG.coin;$('rodCoins').textContent=S.coins;
+  const cur=lv.buses[D.bi];
+  $('rodStop').innerHTML=cur==null?'':`<div class="cur" id="rodCur"><img src="${bus(3,1,true,RCOL[cur])}" style="height:40px" alt=""><div class="seats">${[0,1,2].map(i=>`<i class="${i<D.seats?'on':''}"></i>`).join('')}</div></div>`+
+    lv.buses.slice(D.bi+1,D.bi+3).map((c,i)=>`<div class="nx"><img src="${bus(2,1,true,RCOL[c])}" style="height:${22-i*6}px" alt=""><div>${i?'depois':'próximo'}</div></div>`).join('');
+  $('rodBench').innerHTML=[...Array(D.max).keys()].map(i=>`<div class="${i>=lv.bench?'extra':''}">${D.bench[i]!=null?`<img src="${pax(D.bench[i])}" alt="">`:''}</div>`).join('');
+  const W=lv.W,H=lv.H,cs=Math.floor(Math.min(56,(Math.min(innerWidth,480)-36)/W)),gd=$('rodGrid');
+  gd.style.width=W*cs+'px';gd.style.height=H*cs+'px';
+  gd.innerHTML='';
+  D.grid.forEach((v,i)=>{
+    const x=i%W,y=(i/W)|0;
+    if(v===-2){const e=document.createElement('div');e.className='wall';e.style.cssText=`left:${x*cs+2}px;top:${y*cs+2}px;width:${cs-4}px;height:${cs-4}px`;gd.appendChild(e);return}
+    if(v<0)return;
+    const e=document.createElement('div');e.className='ps'+(rodCanExit(D.grid,W,H,i)?'':' far');
+    e.style.cssText=`left:${x*cs}px;top:${y*cs}px;width:${cs}px;height:${cs}px`;
+    e.innerHTML=`<img src="${pax(v)}" alt="">`;
+    e.addEventListener('pointerdown',ev_=>{ev_.preventDefault();rodTap(i,e)});
+    gd.appendChild(e);
+  });
+  const sb=$('rodSeat');sb.disabled=D.seatBuy>0;sb.textContent=D.seatBuy?'Vaga extra OK':'+1 vaga · '+PCOST.seat;
+}
+PCOST.seat=100;
+/* ônibus cheio sai; o próximo leva quem já espera no banco */
+function rodNextBus(){
+  const D=RD,lv=D.lv;
+  while(D.seats>=3&&D.bi<lv.buses.length){
+    D.bi++;D.seats=0;SFX.go();vib(15);
+    const c=lv.buses[D.bi];if(c==null)break;
+    for(let i=0;i<D.bench.length&&D.seats<3;)if(D.bench[i]===c){D.bench.splice(i,1);D.seats++}else i++;
+  }
+}
+function rodTap(i,el){
+  const D=RD;if(!D||D.over)return;ac();
+  const lv=D.lv,c=D.grid[i];
+  if(c<0)return;
+  if(!rodCanExit(D.grid,lv.W,lv.H,i)){SFX.tick();el.classList.remove('bad');void el.offsetWidth;el.classList.add('bad');return}
+  const cur=lv.buses[D.bi];
+  if(c!==cur&&D.bench.length>=D.max){rodLose();return}
+  D.grid[i]=-1;
+  el.style.transform='translateY(-40px)';el.style.opacity='0';
+  if(c===cur){D.seats++;SFX.coin(D.seats);S.coins++;tweenCoins();track('clear',1);if(D.seats>=3){const b=$('rodCur');if(b)b.classList.add('go');setTimeout(()=>{rodNextBus();rodAfter()},380);return}}
+  else{D.bench.push(c);SFX.flip();vib(10)}
+  setTimeout(rodAfter,180);
+}
+function rodAfter(){
+  const D=RD;rodRender();save();
+  if(D.bi>=D.lv.buses.length&&!D.over){D.over=true;rodWin()}
+}
+function rodLose(){
+  const D=RD;D.over=true;SFX.lose();vib([40,40,40]);ev('rod_fail',{rod:S.rod.level});
+  const w=$('rodBench');w.classList.remove('shake');void w.offsetWidth;w.classList.add('shake');
+  popup({title:'Banco lotado!',msg:'Não cabe mais ninguém esperando.',btn:'Tentar de novo',fn:rodStart,btn2:'+1 vaga (AD)',fn2:()=>{
+    const b2=$('ovB2');b2.disabled=true;b2.textContent='Anúncio...';
+    Plat.rewarded('rod_seat',ok=>{if(!ok){b2.disabled=false;b2.textContent='+1 vaga (AD)';return}$('ov').style.display='none';D.max++;D.over=false;rodRender()});
+  }});
+}
+function rodWin(){
+  const L=S.rod.level,bonus=10+2*L;
+  S.rod.level++;S.coins+=bonus;passXp(15);track('levels',1);ev('rod_win',{rod:L});save();
+  const chest=L%5===0?'rare':null;
+  SFX.win();confetti();tweenCoins();
+  const next=()=>{Plat.interstitial();rodStart()};
+  popup({title:'Rodoviária '+L+' concluída!',stars:3,msg:'+'+bonus+' moedas'+(chest?'\nBaú raro!':''),btn:chest?'Abrir baú':'Próxima',fn:()=>chest?openChest(chest,next):next(),btn2:'Campanha',fn2:()=>{$('ov').style.display='none';chest?openChest(chest,()=>tab('game')):tab('game')}});
+}
+$('rodBtn').onclick=()=>{ac();tab('rod')};
+$('rodBack').onclick=()=>tab('game');
+$('rodReset').onclick=()=>{ac();rodStart()};
+$('rodSeat').onclick=()=>{
+  const D=RD;if(!D||D.over||D.seatBuy)return;
+  if(S.coins<PCOST.seat){adOfferSeat();return}
+  S.coins-=PCOST.seat;D.seatBuy=1;D.max++;save();tweenCoins();SFX.buy();rodRender();
+};
+function adOfferSeat(){popup({title:'Sem moedas',msg:'Assista a um anúncio e ganhe 1 vaga extra no banco.',btn:'Assistir (AD)',fn:()=>Plat.rewarded('rod_seat',ok=>{if(!ok||!RD)return;RD.seatBuy=1;RD.max++;rodRender()}),btn2:'Agora não',fn2:()=>{$('ov').style.display='none'}})}
 
 /* ---------- aba Cidade ---------- */
 let cityBase=null,cityCv=null,cityEnt={w:[],c:[]},cityT=0;
@@ -1271,7 +1565,7 @@ function renderCity(){
   const pend=cityPending(),rt=rate(),m=MS[S.ms],n=S.city.length;
   let h='';
   if(n){
-    h+=`<div class="card"><div class="ch"><img src="${IMG.coin}" alt=""><div class="grow"><b>RENDA DA CIDADE</b><div class="sub">+${rt} moedas por hora · acumula até 6h</div></div><button class="btn" ${pend<1?'disabled':''} onclick="collectCity()">Coletar ${pend}</button></div></div>`;
+    h+=`<div class="card"><div class="ch"><img src="${IMG.coin}" alt=""><div class="grow"><b>RENDA DA CIDADE</b><div class="sub">+${rt} moedas por hora · acumula até 6h</div></div><button class="btn" ${pend<1?'disabled':''} onclick="collectCity()">Coletar ${pend}</button></div>${pend>=20&&adDay().city<3?`<button class="btn sec wide" style="margin-top:10px" onclick="collectCity(1)">Coletar em dobro (AD): ${pend*2}</button>`:''}</div>`;
   }
   if(m){
     h+=`<div class="card"><b>META: ${m.n} PRÉDIOS</b><div class="mbar"><i style="width:${Math.min(100,n/m.n*100)}%"></i></div><div class="ch2"><span class="sub">${Math.min(n,m.n)}/${m.n} · prêmio: ${rewardLabel(m.r)}</span><button class="btn" ${msReady()?'':'disabled'} onclick="claimMs()">Resgatar</button></div></div>`;
@@ -1299,8 +1593,10 @@ function buy(i){
   spawn(cv.left+((idx%4)*16+8)*s,cv.top+(Math.floor(idx/4)*16+8)*s,26,{speed:5,size:8,life:34,g:.12,colors:['#ffd23f','#fff','#7cff6b','#ff7ab0']});
 }
 function tab(name){
-  const V={game:'gameView',rew:'rewView',city:'cityView',col:'colView'},T={game:'tabGame',rew:'tabRew',city:'tabCity',col:'tabCol'};
-  Object.keys(V).forEach(k2=>{$(V[k2]).classList.toggle('hidden',k2!==name);$(T[k2]).classList.toggle('on',k2===name)});
+  const V={game:'gameView',rew:'rewView',city:'cityView',col:'colView',rod:'rodView'},T={game:'tabGame',rew:'tabRew',city:'tabCity',col:'tabCol',rod:'tabGame'};
+  Object.keys(V).forEach(k2=>$(V[k2]).classList.toggle('hidden',k2!==name));
+  Object.keys(T).forEach(k2=>{if(k2!=='rod')$(T[k2]).classList.toggle('on',k2===name||(name==='rod'&&k2==='game'))});
+  if(name==='rod')rodStart();
   if(name==='rew')renderRew();
   if(name==='city')renderCity();
   if(name==='col')renderCol();
@@ -1326,7 +1622,8 @@ $('coinImg').src=IMG.coin;$('cmImg').src=IMG.chest;
   im.style.cssText=`top:${top}px;width:${w}px;animation-duration:${dur}s;animation-delay:-${i*17}s`;
   document.body.appendChild(im);
 });
-loginCheck();ensureMissions();ensureDaily();ensureWeekly();
+setLang(detectLang(S.lang));startI18n();document.title=tr('Cidade Bus Jam');
+Plat.init();loginCheck();ensureMissions();ensureDaily();ensureWeekly();
 if(S.city.length&&!S.cityAt){S.cityAt=Date.now();save()}
 $('coinTxt').textContent=S.coins;
 start();
@@ -1345,7 +1642,7 @@ setTimeout(()=>{if(dailyReady())showDaily()},700);
    Preencha CLOUD.url e CLOUD.key (URL do projeto e chave anon/publishable do Supabase)
    depois de rodar supabase.sql. Vazio = jogo 100% offline. */
 const CLOUD={url:'https://mecvzxauzpmywtltqdfs.supabase.co',key:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1lY3Z6eGF1enBteXd0bHRxZGZzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI0NjgxNDQsImV4cCI6MjEwODA0NDE0NH0.lKcdq0XG8poTQzEiLwW0fCA-AD8KPv3YxYGSK-QXWzE'};
-const cloudOn=()=>!!(CLOUD.url&&CLOUD.key);
+const cloudOn=()=>!!(CLOUD.url&&CLOUD.key)&&(()=>{try{return localStorage.getItem('cbj_nocloud')!=='1'}catch(e){return true}})();
 let cloudComm=null,cloudQ=[],cloudSentContrib=0,cloudLast='',cloudMsg='',cloudBoard=null,deferredInstall=null;
 const PID=(()=>{try{let p=localStorage.getItem('cbj_pid');if(!p){p=(crypto.randomUUID?crypto.randomUUID():'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.random()*16|0;return(c==='x'?r:r&3|8).toString(16)}));localStorage.setItem('cbj_pid',p)}return p}catch(e){return '00000000-0000-4000-8000-000000000000'}})();
 async function rpc(fn,args){
@@ -1380,9 +1677,18 @@ async function cloudRestore(){
   if(d&&typeof d.level==='number'){localStorage.setItem('cbj_pid',code.trim());localStorage.setItem('cbj',JSON.stringify(d));location.reload()}
   else{cloudMsg=d===undefined?'Sem conexão':'Nenhum save com esse código';renderSettings()}
 }
+function cloudDelete(){
+  $('setOv').style.display='none';
+  popup({title:'Apagar dados da nuvem',msg:'Apaga a cópia do progresso, o ranking e os eventos de uso guardados no servidor. O jogo neste aparelho continua.',btn:'Confirmar',fn:async()=>{
+    const r=await rpc('delete_player',{p:PID});
+    if(r===undefined){popup({title:'Sem conexão',msg:'Tente de novo com internet.',btn:'OK',fn:()=>{}});return}
+    try{localStorage.setItem('cbj_nocloud','1')}catch(e){}
+    cloudQ=[];popup({title:'Dados apagados da nuvem',msg:'A cópia na nuvem foi apagada e o jogo não envia mais dados para o servidor.',btn:'OK',fn:()=>{}});
+  },btn2:'Cancelar',fn2:()=>{$('ov').style.display='none'}});
+}
 function settingsExtra(){
   let h='';
-  if(cloudOn())h+=`<div class="sub" style="margin:12px 0 6px">NUVEM · ${cloudMsg||'ativa'}</div><div class="sub" style="word-break:break-all">Seu código: ${PID}</div><input id="restCode" placeholder="Colar código para restaurar" style="width:100%;margin:6px 0;padding:8px;font:inherit;font-size:9px"><button class="btn sec wide" onclick="cloudRestore()">Restaurar save</button>`;
+  if(cloudOn())h+=`<div class="sub" style="margin:12px 0 6px">NUVEM · ${cloudMsg||'ativa'}</div><div class="sub" style="word-break:break-all">Seu código: ${PID}</div><input id="restCode" placeholder="Colar código para restaurar" style="width:100%;margin:6px 0;padding:8px;font:inherit;font-size:9px"><button class="btn sec wide" onclick="cloudRestore()">Restaurar save</button><button class="btn sec wide" onclick="cloudDelete()">Apagar dados da nuvem</button>`;
   else h+=`<div class="sub" style="margin:12px 0 6px">Nuvem desligada (jogo offline)</div>`;
   if(deferredInstall)h+=`<button class="btn wide" onclick="doInstall()">Instalar app</button>`;
   return h;

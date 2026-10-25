@@ -43,3 +43,13 @@ create or replace function leaderboard(d int) returns table(nick text, stars int
 $$;
 revoke all on function save_player,load_player,log_events,add_weekly,get_weekly,submit_daily,leaderboard from public;
 grant execute on function save_player,load_player,log_events,add_weekly,get_weekly,submit_daily,leaderboard to anon;
+
+-- ===== v6: exclusão dos dados (LGPD / Google Play) =====
+create or replace function delete_player(p uuid) returns void language plpgsql security definer set search_path=public as $$
+begin
+  delete from players where id=p;
+  delete from events where pid=p;
+  delete from daily_scores where pid=p;
+end $$;
+revoke all on function delete_player from public;
+grant execute on function delete_player to anon;
