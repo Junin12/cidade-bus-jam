@@ -168,6 +168,9 @@ img,canvas{image-rendering:crisp-edges;image-rendering:pixelated}
 #rodGrid .wall{position:absolute;background:#5a6179;border:2px solid var(--line)}
 #rodGrid .ps.bad{animation:bad .4s}
 #setBody .btn{margin-top:8px}
+:focus-visible{outline:3px solid #ffd54a;outline-offset:2px}
+/* quem pediu menos movimento no aparelho: sem nuvens, tremidas e balanço (piscadas de aviso continuam) */
+@media (prefers-reduced-motion:reduce){.cloud{display:none}.shake,.shakeChest,#hand,.tabs button[data-dot="1"]::after{animation:none}}
 </style>
 </head>
 <body>
@@ -224,11 +227,11 @@ img,canvas{image-rendering:crisp-edges;image-rendering:pixelated}
   <button id="tabCity">Cidade</button>
   <button id="tabCol">Coleção</button>
 </div></div>
-<div class="overlay" id="ov"><div class="box"><h2 id="ovT"></h2><div class="stars" id="ovS"></div><div class="sky" id="ovK"></div><p id="ovP"></p><button class="btn" id="ovB"></button><button class="btn sec" id="ovB2"></button></div></div>
-<div class="overlay" id="setOv"><div class="box"><h2>Configurações</h2><div id="setBody"></div><button class="btn" id="setClose">Fechar</button></div></div>
+<div class="overlay" id="ov"><div class="box" role="dialog" aria-modal="true" aria-labelledby="ovT"><h2 id="ovT"></h2><div class="stars" id="ovS"></div><div class="sky" id="ovK"></div><p id="ovP"></p><button class="btn" id="ovB"></button><button class="btn sec" id="ovB2"></button></div></div>
+<div class="overlay" id="setOv"><div class="box" role="dialog" aria-modal="true" aria-labelledby="setT"><h2 id="setT">Configurações</h2><div id="setBody"></div><button class="btn" id="setClose">Fechar</button></div></div>
 <img id="hand" alt="">
 <div id="banner"><span id="bannerTxt"></span></div>
-<div class="overlay" id="chOv"><div class="box"><h2 id="chT"></h2><img id="chImg" alt=""><div id="chItems"></div><button class="btn" id="chBtn">Coletar</button></div></div>
+<div class="overlay" id="chOv"><div class="box" role="dialog" aria-modal="true" aria-labelledby="chT"><h2 id="chT"></h2><img id="chImg" alt=""><div id="chItems"></div><button class="btn" id="chBtn">Coletar</button></div></div>
 
 <script src="logica.js"></script>
 <script src="i18n.js"></script>
@@ -834,6 +837,9 @@ function hud(){
   $('pwMagnet').innerHTML=`<img src="${IMG.magnet}" alt="">`+(S.inv.magnet>0?'x'+S.inv.magnet:`<img src="${IMG.coin}" alt="">${PCOST.magnet}`);
   $('pwHeart').innerHTML=`<img src="${IMG.heart}" alt="">`+(S.inv.heart>0?'x'+S.inv.heart:`<img src="${IMG.coin}" alt="">${PCOST.heart}`);
   $('pwWhistle').innerHTML=`<img src="${IMG.whistle}" alt="">`+(S.inv.whistle>0?'x'+S.inv.whistle:`<img src="${IMG.coin}" alt="">${PCOST.whistle}`);
+  // botões só com ícone: nome para leitor de tela, no idioma do jogo
+  [['pwMagnet','magnet','Ímã','Magnet','Imán'],['pwHeart','heart','Coração','Heart','Corazón'],['pwWhistle','whistle','Apito','Whistle','Silbato']].forEach(([id,k,pt,en,es])=>
+    $(id).setAttribute('aria-label',({pt,en,es}[LANG]||pt)+' · '+(S.inv[k]>0?'x'+S.inv[k]:PCOST[k])));
   $('pwMagnet').classList.toggle('on',magnet);
   ['pwMagnet','pwHeart','pwWhistle','resetBtn'].forEach(id=>$(id).disabled=dm);
   $('hintBtn').disabled=dm||adBusy;
