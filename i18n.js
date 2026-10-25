@@ -209,7 +209,7 @@ const I18N_ROWS=[
  ['Baú grátis','Free chest','Cofre gratis'],['Baú da fase','Level chest','Cofre del nivel'],['Baú de missão','Mission chest','Cofre de misión'],['Baú raro','Rare chest','Cofre raro'],['Baú épico','Epic chest','Cofre épico'],
  ['Skin ','Skin ','Skin '],['Padrão','Default','Estándar'],['Retrô','Retro','Retro'],['Doce','Candy','Dulce'],['Nave','Spaceship','Nave'],['Ouro','Gold','Oro'],['Arraiá','Arraiá','Arraiá'],
  ['Grátis','Free','Gratis'],['skin Ouro + baús épicos','Gold skin + epic chests','skin Oro + cofres épicos'],
- ['Prêmio: ','Reward: ','Premio: '],['Prêmio','Reward','Premio'],
+ ['Prêmio: ','Reward: ','Premio: '],['prêmio: ','reward: ','premio: '],['Prêmio','Reward','Premio'],
  ['moedas','coins','monedas'],
  // cidade e passaporte
  ['Casa','House','Casa'],['Praça','Square','Plaza'],['Fonte','Fountain','Fuente'],['Padaria','Bakery','Panadería'],['Escola','School','Escuela'],['Igreja','Church','Iglesia'],['Estádio','Stadium','Estadio'],['Ponte do Brooklyn','Brooklyn Bridge','Puente de Brooklyn'],['Ponte','Bridge','Puente'],['Torre Eiffel','Eiffel Tower','Torre Eiffel'],['Torre de Belém','Belém Tower','Torre de Belém'],['Torre','Tower','Torre'],
