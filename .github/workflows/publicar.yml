@@ -1,0 +1,50 @@
+# Publica Cidade Bus Jam em wiapps.com.br/cidade_bus_jam/ a cada push no main (FTP do cPanel, só o que mudou).
+# Secrets (Settings › Secrets and variables › Actions): FTP_SERVER, FTP_USERNAME, FTP_PASSWORD.
+# A conta de FTP abre em public_html; a pasta do app é cidade_bus_jam/. Sem os secrets, só avisa e não publica.
+name: Publicar no wiapps
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: publicar
+  cancel-in-progress: false
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    env:
+      FTP_SERVER: ${{ secrets.FTP_SERVER }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Testar as fases
+        run: node tests/fases.test.js
+      - name: Sem configuração de FTP
+        if: env.FTP_SERVER == ''
+        run: echo "::notice::Cadastre FTP_SERVER, FTP_USERNAME e FTP_PASSWORD nos secrets do repositório para publicar."
+      - name: Enviar por FTP
+        if: env.FTP_SERVER != ''
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftps
+          local-dir: ./
+          server-dir: cidade_bus_jam/
+          # registro do que já foi enviado (fica na pasta do app no site)
+          state-name: .publicado.json
+          exclude: |
+            **/.git*
+            **/.git*/**
+            .github/**
+            **/node_modules/**
+            android/**
+            play-store/**
+            tests/**
+            *.sql
+            *.md
+            package*.json
+            CLAUDE.md
