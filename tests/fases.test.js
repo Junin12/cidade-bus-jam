@@ -18,7 +18,14 @@ for(let level=1;level<=300;level++){
       }
       if(p.kind)vistos[p.kind]=Math.min(vistos[p.kind]||1e9,level);
       if(p.len===4)vistos.long=Math.min(vistos.long||1e9,level);
-      if(p.gate)vistos.gate=Math.min(vistos.gate||1e9,level);
+      if(p.gate&&!p.light)vistos.gate=Math.min(vistos.gate||1e9,level);
+      if(p.light)vistos.light=Math.min(vistos.light||1e9,level);
+    }
+    if(list.toll){   // pedágio: dentro da rua, numa casa vazia e no caminho de saída de algum ônibus
+      const t=list.toll,k=t.x+','+t.y;vistos.toll=Math.min(vistos.toll||1e9,level);
+      if(t.x<0||t.y<0||t.x>=N||t.y>=N)falha(`fase ${level}: pedágio fora da rua`);
+      if(occ.has(k))falha(`fase ${level}: pedágio em cima de uma peça`);
+      if(!list.some(p=>!p.fixed&&L.exitCells(p).some(c=>c[0]===t.x&&c[1]===t.y)))falha(`fase ${level}: pedágio fora do caminho dos ônibus`);
     }
     if(!L.solvable(list))falha(`fase ${level} (semente ${s}) sem solução`);
     if(list.filter(p=>!p.fixed).length<4)falha(`fase ${level}: menos de 4 ônibus`);

@@ -52,7 +52,7 @@ function fallbackLevel(){
   ];
 }
 /* fase em que cada tipo novo aparece pela primeira vez */
-const KIND_AT={vip:4,broken:8,school:12,flip:16,long:20,ice:26,gate:34};
+const KIND_AT={vip:4,broken:8,school:12,flip:16,long:20,ice:26,gate:34,toll:40,light:44};
 function addSpecials(list,level,rnd){
   const mv=list.filter(p=>!p.fixed);
   const pv=level>=KIND_AT.vip?.12:0,pb=level>=KIND_AT.broken?.12:0,pf=level>=KIND_AT.flip?.10:0;
@@ -75,6 +75,19 @@ function addSpecials(list,level,rnd){
   if(level>=KIND_AT.gate){
     const cones=list.filter(p=>p.fixed);
     cones.slice(0,level>=60?2:1).forEach(c=>{c.gate=true;c.open=false});
+  }
+  /* semáforo: abre e fecha sozinho pelo relógio. Para o validador conta como fechado (igual à cancela),
+     então a fase tem solução mesmo se o jogador pegar sempre o sinal vermelho. */
+  if(level>=KIND_AT.light){
+    const c=list.find(p=>p.fixed&&!p.gate);
+    if(c){c.gate=true;c.light=true;c.open=false}
+  }
+  /* pedágio: casa vazia no caminho de saída de algum ônibus; quem passa por ela paga moedas extras.
+     Não ocupa a rua, então não muda a solução. Fica guardado em list.toll. */
+  if(level>=KIND_AT.toll){
+    const occ=new Set();list.forEach(p=>cellsOf(p).forEach(c=>occ.add(c.join(','))));
+    const cand=[...new Set(mv.flatMap(p=>pathCells(p).map(c=>c.join(','))))].filter(k=>!occ.has(k)).sort();
+    if(cand.length){const [x,y]=cand[(rnd()*cand.length)|0].split(',').map(Number);list.toll={x,y}}
   }
   if(!solvable(list)){
     list.forEach(p=>{if(p.kind==='ice'){p.kind=undefined;p.ice=undefined}});
@@ -185,4 +198,6 @@ function genRod(level,rnd=Math.random){
 }
 const rodSolve=lv=>!!lv&&rodPlay(lv,lv.sol).ok;
 
-if(typeof module!=='undefined')module.exports={gen,rounds,solvable,cellsOf,canMove,freeList,KIND_AT,getN:()=>N,genRod,rodSolve,rodPlay,rodCanExit};
+/* casas que o ônibus atravessa ao sair (para o pedágio) */
+const exitCells=p=>pathDir(p,p.d);
+if(typeof module!=='undefined')module.exports={exitCells,gen,rounds,solvable,cellsOf,canMove,freeList,KIND_AT,getN:()=>N,genRod,rodSolve,rodPlay,rodCanExit};

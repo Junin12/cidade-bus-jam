@@ -47,8 +47,12 @@ img,canvas{image-rendering:crisp-edges;image-rendering:pixelated}
 
 .piece{position:absolute;background-size:100% 100%;cursor:pointer;transition:transform .5s cubic-bezier(.55,.05,.95,.45);animation:pop .35s backwards;will-change:transform}
 @keyframes pop{from{scale:0;opacity:0}60%{scale:1.12}}
-.piece:active{scale:.93}
+.piece:active,.piece.press{scale:.93}
+.piece.press{filter:brightness(1.25) drop-shadow(0 0 4px #fff)}
 .piece.fixed{cursor:default}
+.toll{position:absolute;background-size:100% 100%;opacity:.9;pointer-events:none}
+.toll.flash{animation:flash .5s}
+.toll.hint{animation:pulse .6s steps(2) infinite}
 .piece.bad{animation:bad .4s}
 @keyframes bad{20%{translate:-5px 0}40%{translate:5px 0}60%{translate:-4px 0}80%{translate:4px 0}}
 .piece.flash{animation:flash .5s}
@@ -267,7 +271,11 @@ const IMG={
   gateC:(()=>{const c=C(16,16),g=c.getContext('2d');R(g,1,4,2,11,'#6b7280');R(g,13,4,2,11,'#6b7280');for(let x=0;x<16;x+=4){R(g,x,7,2,3,'#e63946');R(g,x+2,7,2,3,'#fff')}R(g,1,3,2,1,'#ffd23f');R(g,13,3,2,1,'#ffd23f');return c.toDataURL()})(),
   gateO:(()=>{const c=C(16,16),g=c.getContext('2d');R(g,1,4,2,11,'#6b7280');R(g,13,4,2,11,'#6b7280');for(let y=0;y<10;y+=3){R(g,1,y,2,2,'#e63946');R(g,1,y+2,2,1,'#fff')}R(g,13,3,2,1,'#7cff6b');return c.toDataURL()})(),
   whistle:patt(["......XX",".XXXXXWX","XYYYYYXX","XYWYYYX.","XYYYYYX.",".XYYYX..","..XXX..."],{X:'#1b2a55',Y:'#ffd23f',W:'#fff8c4'}),
-  cone:(()=>{const c=C(16,16),g=c.getContext('2d');R(g,3,13,10,2,'#5a2a0a');R(g,7,2,2,2,'#ff8a1f');R(g,6,4,4,3,'#ff8a1f');R(g,5,7,6,3,'#ff8a1f');R(g,4,10,8,3,'#ff8a1f');R(g,6,5,4,1,'#fff');R(g,5,8,6,1,'#fff');R(g,7,3,1,1,'#ffc27a');return c.toDataURL()})()
+  cone:(()=>{const c=C(16,16),g=c.getContext('2d');R(g,3,13,10,2,'#5a2a0a');R(g,7,2,2,2,'#ff8a1f');R(g,6,4,4,3,'#ff8a1f');R(g,5,7,6,3,'#ff8a1f');R(g,4,10,8,3,'#ff8a1f');R(g,6,5,4,1,'#fff');R(g,5,8,6,1,'#fff');R(g,7,3,1,1,'#ffc27a');return c.toDataURL()})(),
+  // semáforo (vermelho fecha a rua, verde libera) e cabine de pedágio
+  lightR:(()=>{const c=C(16,16),g=c.getContext('2d');R(g,7,10,2,5,'#6b7280');R(g,4,13,8,2,'#4b5060');R(g,5,1,6,10,'#1f2430');R(g,6,2,4,4,'#ff3b3b');R(g,7,3,1,1,'#ffb3b3');R(g,6,7,4,3,'#2f4a35');return c.toDataURL()})(),
+  lightG:(()=>{const c=C(16,16),g=c.getContext('2d');R(g,7,10,2,5,'#6b7280');R(g,4,13,8,2,'#4b5060');R(g,5,1,6,10,'#1f2430');R(g,6,2,4,4,'#4a2a2a');R(g,6,6,4,4,'#7cff6b');R(g,7,7,1,1,'#d9ffd3');return c.toDataURL()})(),
+  toll:(()=>{const c=C(16,16),g=c.getContext('2d');R(g,2,4,8,10,'#2f6fdf');R(g,1,3,10,2,'#ffd23f');R(g,3,6,6,3,'#bfe9ff');R(g,10,9,5,1,'#ffd23f');R(g,11,9,1,1,'#1f2430');R(g,13,9,1,1,'#1f2430');R(g,3,10,3,4,'#1a4aa8');R(g,5,1,3,2,'#ffd23f');R(g,6,1,1,1,'#b8860b');return c.toDataURL()})()
 };
 const ICON={coins:IMG.coin,magnet:IMG.magnet,heart:IMG.heart,chest:IMG.chest,whistle:IMG.whistle};
 
@@ -354,7 +362,11 @@ const REG=[
  {n:'Nova York',w:1,sky:['#55c2ff','#a8e0ff','#e6f6ff'],road:['#3f4350','#3a3e4a','#2f323d','#51566a'],root:293.66,sc:'pent',wave:'square'},
  {n:'Tóquio',w:1,sky:['#ff9ec7','#ffd0e4','#fff0f7'],road:['#5a5560','#544f5a','#45404b','#6b6672'],root:329.63,sc:'pent',wave:'sine'}
 ];
-const regionOf=lv=>Math.min(REG.length-1,Math.floor((lv-1)/25));
+/* ordem das regiões: Brasil e Passaporte do Mundo intercalados, para o mundo aparecer cedo (fase 26).
+   O número da região (REG e pontos turísticos 10+2r) não muda; só a fase em que cada uma abre. */
+const REG_ORDER=[0,7,1,8,2,9,3,10,4,11,5,6];
+const regionOf=lv=>REG_ORDER[Math.min(REG_ORDER.length-1,Math.floor((lv-1)/25))];
+const regStart=r=>REG_ORDER.indexOf(r)*25+1;   // fase em que a região r abre
 function boardBG(n,r){
   const pal=REG[r||0].road;
   const c=C(n*16,n*16),g=c.getContext('2d');
@@ -728,7 +740,7 @@ function blockerFor(p){
 const frozen=q=>q.ice>0;
 const canGo=q=>!q.fixed&&!frozen(q)&&!blockerFor(q);
 
-let gateN=0,shield=false,k=3,cell=48,pieces=[],lives=3,over=false,cleared=0,total=0,streak=0,magnet=false,mode='camp',dlog='',curReg=0,adBusy=false,runOpen=false;
+let tollCell=null,gateN=0,shield=false,k=3,cell=48,pieces=[],lives=3,over=false,cleared=0,total=0,streak=0,magnet=false,mode='camp',dlog='',curReg=0,adBusy=false,runOpen=false;
 const PCOST={magnet:40,heart:60,whistle:80};
 const DAILY_LEVEL=12;
 const dailyNum=()=>Math.floor((new Date(todayStr()+'T00:00:00')-new Date('2026-10-01T00:00:00'))/864e5)+1;
@@ -786,11 +798,24 @@ function start(){
   pieces.forEach((p,i)=>{
     const el=document.createElement('div');el.className='piece'+(p.fixed?' fixed':'');
     const pw=(p.h?p.len:1)*cell,ph=(p.h?1:p.len)*cell;
-    const img=p.fixed?(p.gate?IMG.gateC:IMG.cone):spriteOf(p);
+    const img=p.fixed?(p.light?IMG.lightR:p.gate?IMG.gateC:IMG.cone):spriteOf(p);
     el.style.cssText=`left:${p.x*cell}px;top:${p.y*cell}px;width:${pw}px;height:${ph}px;background-image:url(${img});animation-delay:${i*45}ms`;
-    el.addEventListener('pointerdown',e=>{e.preventDefault();tap(p)});
+    // Toque só vale ao soltar o dedo em cima do ônibus: arrastar para fora (ou rolar a tela) cancela o toque errado.
+    let t0=null;
+    el.addEventListener('pointerdown',e=>{e.preventDefault();t0={x:e.clientX,y:e.clientY,id:e.pointerId};if(!p.fixed)el.classList.add('press');try{el.setPointerCapture(e.pointerId)}catch(_){}});
+    el.addEventListener('pointerup',e=>{
+      const ok=t0&&t0.id===e.pointerId&&Math.hypot(e.clientX-t0.x,e.clientY-t0.y)<cell*.6;
+      t0=null;el.classList.remove('press');if(ok)tap(p);
+    });
+    el.addEventListener('pointercancel',()=>{t0=null;el.classList.remove('press')});
     p.el=el;b.appendChild(el);
   });
+  tollCell=pieces.toll||null;
+  if(tollCell){
+    const t=document.createElement('div');t.className='toll';t.id='tollEl';
+    t.style.cssText=`left:${tollCell.x*cell}px;top:${tollCell.y*cell}px;width:${cell}px;height:${cell}px;background-image:url(${IMG.toll})`;
+    b.insertBefore(t,b.firstChild);
+  }
   comboShow();hud();
   if(mode==='camp'&&S.level%5===0)showBanner('FASE DIFÍCIL! Prêmio: baú raro');
   else if(shield)showBanner('SEQUÊNCIA x'+S.ws+'! ESCUDO ATIVO');
@@ -901,6 +926,11 @@ function launch(p){
   const [cx,cy]=centerOf(p.el);
   dust(p,8);[1,2,3].forEach(i=>setTimeout(()=>dust(p,4),i*90));
   const n=p.kind==='vip'?3:1;
+  if(tollCell&&exitCells(p).some(c=>c[0]===tollCell.x&&c[1]===tollCell.y)){
+    const te=$('tollEl');
+    if(te){const [tx,ty]=centerOf(te);setTimeout(()=>{floatText(tx,ty-10,'PEDÁGIO +'+TOLL_COINS,'#ffd23f');flyCoin(tx,ty);tone(1320,.08,'square',.04,300)},220);te.classList.remove('flash');void te.offsetWidth;te.classList.add('flash')}
+    S.coins+=TOLL_COINS;
+  }
   if(p.kind==='vip'){SFX.vip();vib([10,20,10])}
   for(let i=0;i<n;i++)setTimeout(()=>flyCoin(cx,cy),i*90);
   S.coins+=n;ensureWeekly();S.weekly.contrib++;track('clear',1);
@@ -916,7 +946,7 @@ function launch(p){
 }
 /* cancelas abrem e fecham a cada 2 saídas */
 function toggleGates(){
-  const gs=pieces.filter(q=>q.gate);if(!gs.length)return;
+  const gs=pieces.filter(q=>q.gate&&!q.light);if(!gs.length)return;
   gs.forEach(q=>{q.open=!q.open;q.el.style.backgroundImage=`url(${q.open?IMG.gateO:IMG.gateC})`;q.el.classList.remove('spin');void q.el.offsetWidth;q.el.classList.add('spin')});
   tone(gs[0].open?660:330,.12,'square',.04,gs[0].open?200:-100);
 }
@@ -1092,9 +1122,12 @@ const KIND_TIP={
   flip:'Ônibus giratório (anel azul): a direção inverte a cada 3 segundos. Espere a seta certa!',
   long:'Ônibus articulado: é comprido e precisa de muito espaço para sair!',
   ice:'Ônibus congelado: o número mostra quantos outros ônibus precisam sair para ele derreter.',
-  gate:'Cancela: abre e fecha a cada 2 ônibus que saem. Passe quando estiver aberta!'
+  gate:'Cancela: abre e fecha a cada 2 ônibus que saem. Passe quando estiver aberta!',
+  toll:'Pedágio: cada ônibus que passa pela cabine azul rende 5 moedas a mais!',
+  light:'Semáforo: fica verde e vermelho sozinho a cada 2,5 segundos. Só passe no verde!'
 };
-const isKind=(p,k)=>k==='long'?p.len===4:k==='gate'?!!p.gate:p.kind===k;
+const TOLL_COINS=5;
+const isKind=(p,k)=>k==='long'?p.len===4:k==='gate'?!!p.gate&&!p.light:k==='light'?!!p.light:k==='toll'?false:p.kind===k;
 const TUT=['Toque num ônibus LIVRE para ele sair da rua. Siga a seta!','Se algo estiver na frente, o ônibus bate e você perde um coração. Olhe a seta antes de tocar!','Tire vários ônibus seguidos sem errar para fazer COMBO e ganhar moedas extras!'];
 const evp=()=>mode==='camp'?{level:S.level}:{daily:1};
 function freeBus(){return pieces.find(q=>canGo(q)&&!(q.kind==='broken'&&!q.fixedUp))||pieces.find(canGo)}
@@ -1117,6 +1150,7 @@ function showTip(t,ms){tipText=t;tipUntil=Date.now()+ms;tutUpdate();setTimeout(t
 function showBanner(t){const b=$('banner');$('bannerTxt').textContent=t;b.classList.remove('show');void b.offsetWidth;b.classList.add('show')}
 function introKinds(){
   const msgs=[];
+  if(tollCell&&!S.seen.toll){S.seen.toll=1;msgs.push(KIND_TIP.toll);const te=$('tollEl');if(te){te.classList.add('hint');setTimeout(()=>te.classList.remove('hint'),2800)}}
   Object.keys(KIND_TIP).forEach(k=>{
     if(pieces.some(p=>isKind(p,k))&&!S.seen[k]){
       S.seen[k]=1;msgs.push(KIND_TIP[k]);
@@ -1421,12 +1455,12 @@ function renderCol(){
       return `<div class="sk ${own?'':'lock'} ${S.skin===s.id?'eq':''}" style="border-color:${RAR[s.r].col}" onclick="equip('${s.id}')"><img src="${skinPrev(s.id)}" alt="">${own?s.n:'???'}</div>`;
     }).join('')+`</div></div>`;
   h+=`<div class="card"><b>PASSAPORTE</b>`+REG.map((rg,r)=>{
-    const ids=[10+2*r,11+2*r],have=ids.filter(i=>S.city.includes(i)).length,unl=S.level>=r*25+1;
-    return (r===0?'<div class="sub" style="margin-top:8px;color:#ffd23f">BRASIL</div>':r===7?'<div class="sub" style="margin-top:14px;color:#ffd23f">MUNDO</div>':'')+`<div class="mis"><div>${rg.n.toUpperCase()}</div><div class="sub">${unl?have+'/2 pontos turísticos':'Chegue à fase '+(r*25+1)+' para liberar'}</div><div class="lm">${ids.map(i=>`<img class="${S.city.includes(i)?'':'off'}" src="${BIMG[i]}" alt="">`).join('')}</div></div>`;
+    const ids=[10+2*r,11+2*r],have=ids.filter(i=>S.city.includes(i)).length,unl=S.level>=regStart(r);
+    return (r===0?'<div class="sub" style="margin-top:8px;color:#ffd23f">BRASIL</div>':r===7?'<div class="sub" style="margin-top:14px;color:#ffd23f">MUNDO</div>':'')+`<div class="mis"><div>${rg.n.toUpperCase()}</div><div class="sub">${unl?have+'/2 pontos turísticos':'Chegue à fase '+regStart(r)+' para liberar'}</div><div class="lm">${ids.map(i=>`<img class="${S.city.includes(i)?'':'off'}" src="${BIMG[i]}" alt="">`).join('')}</div></div>`;
   }).join('')+`</div>`;
   $('colView').innerHTML=h;
 }
-const lmUnlocked=i=>i<10||S.level>=Math.floor((i-10)/2)*25+1;
+const lmUnlocked=i=>i<10||S.level>=regStart(Math.floor((i-10)/2));
 
 /* ---------- Modo Rodoviária (regras em logica.js) ---------- */
 const ROD_AT=10,RCOL=['#e63946','#2a9d8f','#f4a261','#8e6cef','#06a6d4','#7cb518'];
@@ -1579,7 +1613,7 @@ function renderCity(){
   $('cityInfo').innerHTML=h;
   const row=i=>{
     const b=BUILDINGS[i],own=S.city.filter(x=>x===i).length,lk=!lmUnlocked(i);
-    const need=i>=10?Math.floor((i-10)/2)*25+1:0;
+    const need=i>=10?regStart(Math.floor((i-10)/2)):0;
     return `<div class="shop"><img src="${BIMG[i]}" alt="" ${lk?'style="filter:brightness(0) opacity(.5)"':''}><div class="nm">${b.n}<small>${lk?'Chegue à fase '+need:(own?'Você tem '+own+' · ':'Novo! · ')+'+'+INC[i]+'/hora'}</small></div><button class="btn" ${(lk||S.coins<b.c)?'disabled':''} onclick="buy(${i})"><img src="${IMG.coin}" alt="">${b.c}</button></div>`;
   };
   let sh=`<div class="sub" style="margin:0 0 8px">GERAL</div>`+[0,1,2,3,4,5,6,7,8,9].map(row).join('');
@@ -1640,6 +1674,13 @@ setInterval(()=>{
   if(pieces.some(p=>p.kind==='flip'))SFX.flip();
   pieces.forEach(p=>{if(p.kind==='flip'&&p.el){p.d=-p.d;p.el.style.backgroundImage=`url(${spriteOf(p)})`;p.el.classList.remove('spin');void p.el.offsetWidth;p.el.classList.add('spin')}});
 },3000);
+/* semáforo: troca de cor sozinho */
+setInterval(()=>{
+  if(over||$('gameView').classList.contains('hidden'))return;
+  const ls=pieces.filter(p=>p.light&&p.el);if(!ls.length)return;
+  ls.forEach(q=>{q.open=!q.open;q.el.style.backgroundImage=`url(${q.open?IMG.lightG:IMG.lightR})`});
+  tone(ls[0].open?880:440,.08,'sine',.035);
+},2500);
 setTimeout(()=>{if(dailyReady())showDaily()},700);
 </script>
 
